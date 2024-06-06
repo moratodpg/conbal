@@ -1,0 +1,30 @@
+name: camp_ind_05
+method: random
+metric:
+  goal: maximize
+  name: f1_score
+parameters:
+  dropout:
+    value: 0.1
+  learning_rate:
+    value: 0.0001
+  hidden_size:
+    value: 256
+  layers:
+    value: 2
+  weight_decay:
+    value: 0.0001
+  dataset:
+    value: datasets/subset_build_6kB_dataset.pth
+  mode:
+    value: active_learning_cost
+  active_points:
+    value: 5
+  active_iterations:
+    value: 250 # 1000 typically
+  num_forwards:
+    value: 100
+  batch_size:
+    value: 32
+  
+  
