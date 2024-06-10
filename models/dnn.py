@@ -79,7 +79,7 @@ class FocalLoss(nn.Module):
 
 # Define a class for training and testing the classifier
 class Trainer:
-    def __init__(self, model, train_loader, test_loader, criterion, optimizer, num_epochs, patience=30):
+    def __init__(self, model, num_classes, train_loader, test_loader, criterion, optimizer, num_epochs, patience=30):
         self.model = model
         self.train_loader = train_loader
         self.test_loader = test_loader
@@ -87,6 +87,7 @@ class Trainer:
         self.optimizer = optimizer
         self.num_epochs = num_epochs
         self.patience = patience
+        self.num_classes = num_classes
         self.f1_score = 0
         self.best_val_score = float('-inf')
         self.epochs_without_improvement = 0
@@ -98,8 +99,9 @@ class Trainer:
             running_loss = 0.0
             for inputs, labels, _ in self.train_loader:
                 self.optimizer.zero_grad()
-                outputs = self.model(inputs[:, :-22])
+                outputs = self.model(inputs)
                 loss = self.criterion(outputs, labels)
+                print(loss.item())
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
@@ -130,80 +132,59 @@ class Trainer:
                 # Test the model after each epoch
                 self.test()
 
-    def evaluate(self):
-        self.model.eval()  # Set the model to evaluation mode
+    def compute_scores(self):
         correct = 0
         total = 0
-        TP, FP, TN, FN = 0, 0, 0, 0
+        TP, FP, FN, TN = [0] * self.num_classes, [0] * self.num_classes, [0] * self.num_classes, [0] * self.num_classes
         with torch.no_grad():
             for inputs, labels, _ in self.test_loader:
-                outputs = self.model(inputs[:, :-22])
+                outputs = self.model(inputs)
                 _, predicted_labels = torch.max(outputs, 1) 
                 total += labels.size(0)
                 correct += (predicted_labels == labels).sum().item()
                 
                 # Update TP, FP, TN, FN
-                for label, prediction in zip(labels, predicted_labels):
-                    # print(label, prediction)
-                    if label == 1 and prediction == 1:
-                        TP += 1
-                    elif label == 0 and prediction == 0:
-                        TN += 1
-                    elif label == 1 and prediction == 0:
-                        FN += 1
-                    elif label == 0 and prediction == 1:
-                        FP += 1
-                    # print(TP, TN, FN, FP)
+                for i in range(self.num_classes):
+                    TP[i] += ((predicted_labels == i) & (labels == i)).sum().item()
+                    FP[i] += ((predicted_labels == i) & (labels != i)).sum().item()
+                    FN[i] += ((predicted_labels != i) & (labels == i)).sum().item()
+                    TN[i] += ((predicted_labels != i) & (labels != i)).sum().item()
         
         # Compute precision, recall, and accuracy
-        precision = TP / (TP + FP) if (TP + FP) > 0 else 0
-        recall = TP / (TP + FN) if (TP + FN) > 0 else 0
-        accuracy = (TP + TN) / total if total > 0 else 0
-        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-        return f1_score
+        precision = [TP[i] / (TP[i] + FP[i]) if (TP[i] + FP[i]) > 0 else 0 for i in range(self.num_classes)]
+        recall = [TP[i] / (TP[i] + FN[i]) if (TP[i] + FN[i]) > 0 else 0 for i in range(self.num_classes)]
+        f1_score = [2 * (precision[i] * recall[i]) / (precision[i] + recall[i]) if (precision[i] + recall[i]) > 0 else 0 for i in range(self.num_classes)]
+
+        # To compute the average across classes
+        avg_precision = sum(precision) / self.num_classes
+        avg_recall = sum(recall) / self.num_classes
+        avg_f1_score = sum(f1_score) / self.num_classes
+
+        # Overall accuracy
+        accuracy = correct / total if total > 0 else 0
+        scores = {
+            "accuracy": accuracy,
+            "avg_precision": avg_precision,
+            "avg_recall": avg_recall,
+            "avg_f1_score": avg_f1_score
+        }
+        return scores
+
+
+    def evaluate(self):
+        self.model.eval()  # Set the model to evaluation mode
+        scores = self.compute_scores()
+        return scores["accuracy"]
 
     def test(self):
         self.model.load_state_dict(self.best_model)
         self.model.eval()  # Set the model to evaluation mode
-        correct = 0
-        total = 0
-        TP, FP, TN, FN = 0, 0, 0, 0
-        with torch.no_grad():
-            for inputs, labels, _ in self.test_loader:
-                outputs = self.model(inputs[:, :-22])
-                _, predicted_labels = torch.max(outputs, 1) 
-                total += labels.size(0)
-                correct += (predicted_labels == labels).sum().item()
-                
-                # Update TP, FP, TN, FN
-                for label, prediction in zip(labels, predicted_labels):
-                    # print(label, prediction)
-                    if label == 1 and prediction == 1:
-                        TP += 1
-                    elif label == 0 and prediction == 0:
-                        TN += 1
-                    elif label == 1 and prediction == 0:
-                        FN += 1
-                    elif label == 0 and prediction == 1:
-                        FP += 1
-                    # print(TP, TN, FN, FP)
-        
-        # Compute precision, recall, and accuracy
-        precision = TP / (TP + FP) if (TP + FP) > 0 else 0
-        recall = TP / (TP + FN) if (TP + FN) > 0 else 0
-        accuracy = (TP + TN) / total if total > 0 else 0
-        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-        self.f1_score = f1_score
-
-        # Print accuracy on the test set
-        # accuracy = correct / total
-        # print(f"Accuracy on the test set: {accuracy}")
-
-                # Print the computed metrics
-        print(f"Accuracy on the test set: {accuracy}")
-        print(f"Precision on the test set: {precision}")
-        print(f"Recall on the test set: {recall}")
-        print(f"F1 Score on the test set: {f1_score}")
+        scores = self.compute_scores()
+        # Print the computed metrics
+        print(f"Accuracy on the test set: {scores['accuracy']}")
+        print(f"Average Precision on the test set: {scores['avg_precision']}")
+        print(f"Average Recall on the test set: {scores['avg_recall']}")
+        print(f"Average F1 Score on the test set: {scores['avg_f1_score']}")
 
 # Define a class for training and testing the classifier
 class MultiClassTrainer:
