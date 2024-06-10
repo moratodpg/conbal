@@ -8,28 +8,7 @@ class ActiveLearning:
         self.num_active_points = num_active_points
 
     def get_active_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
-        loss_iterations = []
-        predictions = []
-        criterion_item = torch.nn.CrossEntropyLoss(reduction='none')
-        net_current.train()
-        for i in range(num_forwards):
-            with torch.no_grad():
-                predicted = net_current(buildings_dataset.input_tensor[idx_pool])
-                # print(predicted.shape, predicted)
-
-            target = buildings_dataset.output_tensor[idx_pool]
-
-            loss = criterion_item(predicted, target)
-            predicted = F.softmax(predicted, dim=1)
-            loss_iterations.append(loss)
-            predictions.append(predicted)
-
-        ## Dimensions: samples x iterations
-        losses = torch.stack(loss_iterations, dim=1)
-
-        ## Dimensions: samples x iterations x classes
-        predicts = torch.stack(predictions, dim=1)
-        # print(predicts.shape)
+        predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
 
         # Compute predictive entropy
         avg_predicts = torch.mean(predicts, dim=1)
@@ -37,7 +16,7 @@ class ActiveLearning:
         avg_probs_clamped = torch.clamp(avg_predicts, min=eps)
         entropy = -torch.sum(avg_probs_clamped * torch.log2(avg_probs_clamped), dim=1)
 
-        # Compute expected entropy
+        # Compute expected conditional entropy
         prob_clamped = torch.clamp(predicts, min=eps)
         entropy_i = -torch.sum(prob_clamped * torch.log2(prob_clamped), dim=2)
         entropy_sum = entropy_i.sum(dim=1) / num_forwards
@@ -47,7 +26,7 @@ class ActiveLearning:
 
         # active points
         n_active_points = self.num_active_points
-        mi_values, mi_indices = mutual_info.topk(n_active_points)
+        _, mi_indices = mutual_info.topk(n_active_points)
         selected_ind = mi_indices.tolist()
 
         # From the selected indices, get the indices from the pool
@@ -55,43 +34,29 @@ class ActiveLearning:
 
         return selected_idx_pool
     
-    def get_random_points(self, idx_pool, loc_identifier):
-        # create a list of random numbers as integers from 0 to len(idx_pool)
-        camp_cost = 0.03
-        ind_cost = 1
+    # def get_random_points(self, idx_pool, loc_identifier):
+    #     # create a list of random numbers as integers from 0 to len(idx_pool)
+    #     camp_cost = 0.03
+    #     ind_cost = 1
         
+    #     n_active_points = self.num_active_points
+    #     random_idx_pool = np.random.choice(idx_pool, n_active_points, replace=False)
+    #     random_idx_pool = random_idx_pool.tolist()
+
+    #     selected_locations = loc_identifier[random_idx_pool]
+    #     regions_num = torch.unique(selected_locations).shape[0]
+    #     cost_accum = camp_cost * regions_num + ind_cost * (n_active_points - 1)
+    #     return random_idx_pool, cost_accum
+
+    def get_random_points(self, idx_pool):
+        # create a list of random numbers as integers from 0 to len(idx_pool)
         n_active_points = self.num_active_points
         random_idx_pool = np.random.choice(idx_pool, n_active_points, replace=False)
         random_idx_pool = random_idx_pool.tolist()
-
-        selected_locations = loc_identifier[random_idx_pool]
-        regions_num = torch.unique(selected_locations).shape[0]
-        cost_accum = camp_cost * regions_num + ind_cost * (n_active_points - 1)
-        return random_idx_pool, cost_accum
+        return random_idx_pool
     
     def get_multiple_active_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
-        loss_iterations = []
-        predictions = []
-        criterion_item = torch.nn.CrossEntropyLoss(reduction='none')
-        net_current.train()
-        for i in range(num_forwards):
-            with torch.no_grad():
-                predicted = net_current(buildings_dataset.input_tensor[idx_pool][:, :-22])
-                # print(predicted.shape, predicted)
-
-            target = buildings_dataset.output_tensor[idx_pool]
-
-            loss = criterion_item(predicted, target)
-            predicted = F.softmax(predicted, dim=1)
-            loss_iterations.append(loss)
-            predictions.append(predicted)
-
-        ## Dimensions: samples x iterations
-        losses = torch.stack(loss_iterations, dim=1)
-
-        ## Dimensions: samples x iterations x classes
-        predicts = torch.stack(predictions, dim=1)
-        # print(predicts.shape)
+        predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
 
         # Compute predictive entropy
         avg_predicts = torch.mean(predicts, dim=1)
@@ -109,7 +74,7 @@ class ActiveLearning:
 
         # active points
         n_active_points = self.num_active_points
-        mi_values, mi_indices = mutual_info.topk(1)
+        _, mi_indices = mutual_info.topk(1)
         selected_ind = mi_indices.tolist()
 
         for _ in range(n_active_points - 1):
@@ -152,28 +117,7 @@ class ActiveLearning:
     def get_active_points_cost(self, net_current, num_forwards, buildings_dataset, idx_pool, loc_identifier):
         camp_cost = 0.5 #(Before it was 0.03, then 0.1)
         ind_cost = 1
-        loss_iterations = []
-        predictions = []
-        criterion_item = torch.nn.CrossEntropyLoss(reduction='none')
-        net_current.train()
-        for i in range(num_forwards):
-            with torch.no_grad():
-                predicted = net_current(buildings_dataset.input_tensor[idx_pool][:, :-22])
-                # print(predicted.shape, predicted)
-
-            target = buildings_dataset.output_tensor[idx_pool]
-
-            loss = criterion_item(predicted, target)
-            predicted = F.softmax(predicted, dim=1)
-            loss_iterations.append(loss)
-            predictions.append(predicted)
-
-        ## Dimensions: samples x iterations
-        losses = torch.stack(loss_iterations, dim=1)
-
-        ## Dimensions: samples x iterations x classes
-        predicts = torch.stack(predictions, dim=1)
-        # print(predicts.shape)
+        predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
 
         # Compute predictive entropy
         avg_predicts = torch.mean(predicts, dim=1)
@@ -250,11 +194,10 @@ class ActiveLearning:
         # Number of tensors
         n_tensors = len(tensors)
         
-        # Calculate the total number of class combinations
-        total_classes = 2 ** n_tensors
-        
         # Initial combination tensor
-        samples, iterations, _ = tensors[0].shape
+        samples, iterations, num_classes = tensors[0].shape
+        # Calculate the total number of class combinations
+        total_classes = num_classes ** n_tensors
         combination_tensor = torch.ones(samples, iterations, total_classes)
         
         # Iterate through each class combination
@@ -268,5 +211,15 @@ class ActiveLearning:
                 combination_tensor[:, :, i] *= tensors[tensor_idx][:, :, class_idx]
         
         return combination_tensor
+    
+    def predict(self, model, inputs, forward_passes):
+        predictions = []
+        with torch.no_grad():
+            for _ in range(forward_passes):
+                outputs = model(inputs)
+                predicted = F.softmax(outputs, dim=1)
+                predictions.append(predicted)
+        predicts = torch.stack(predictions, dim=1)
+        return predicts
         
          

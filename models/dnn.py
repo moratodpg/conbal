@@ -88,7 +88,7 @@ class Trainer:
         self.num_epochs = num_epochs
         self.patience = patience
         self.num_classes = num_classes
-        self.f1_score = 0
+        self.score = 0
         self.best_val_score = float('-inf')
         self.epochs_without_improvement = 0
         self.best_model = None
@@ -101,7 +101,7 @@ class Trainer:
                 self.optimizer.zero_grad()
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, labels)
-                print(loss.item())
+                # print(loss.item())
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
@@ -180,6 +180,7 @@ class Trainer:
         self.model.load_state_dict(self.best_model)
         self.model.eval()  # Set the model to evaluation mode
         scores = self.compute_scores()
+        self.score = scores["accuracy"]
         # Print the computed metrics
         print(f"Accuracy on the test set: {scores['accuracy']}")
         print(f"Average Precision on the test set: {scores['avg_precision']}")
