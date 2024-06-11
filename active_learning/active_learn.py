@@ -161,35 +161,6 @@ class ActiveLearning:
 
         return selected_idx_pool, cost_accum
     
-    def combine_class_products(self, tensors):
-        # Number of tensors
-        n_tensors = len(tensors)
-        
-        # Initial combination tensor
-        samples, iterations, num_classes = tensors[0].shape
-        # Calculate the total number of class combinations
-        total_classes = num_classes ** n_tensors
-        combination_tensor = torch.ones(samples, iterations, total_classes)
-        
-        # Iterate through each class combination
-        for i in range(total_classes):
-            # Compute the index for each tensor's class (0 or 1) based on the combination
-            ##Binary
-            # indices = [(i >> j) & 1 for j in range(n_tensors)]
-            ## Multi-class
-            indices = []
-            temp = i
-            for _ in range(n_tensors):
-                indices.append(temp % num_classes)
-                temp //= num_classes
-
-            # Compute the product for the current combination
-            for tensor_idx, class_idx in enumerate(indices):
-                # Select the class index for the current tensor and multiply
-                combination_tensor[:, :, i] *= tensors[tensor_idx][:, :, class_idx]
-        
-        return combination_tensor
-    
     def predict(self, model, inputs, forward_passes):
         model.train()
         predictions = []
