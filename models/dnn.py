@@ -105,7 +105,6 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
-            avg_train_loss = running_loss / len(self.train_loader)
 
             # Evaluate the model on the test set to calculate validation loss
             val_score = self.evaluate()
@@ -186,72 +185,3 @@ class Trainer:
         print(f"Average Precision on the test set: {scores['avg_precision']}")
         print(f"Average Recall on the test set: {scores['avg_recall']}")
         print(f"Average F1 Score on the test set: {scores['avg_f1_score']}")
-
-# Define a class for training and testing the classifier
-class MultiClassTrainer:
-    def __init__(self, model, train_loader, test_loader, criterion, optimizer, num_epochs, n_classes):
-        self.model = model
-        self.train_loader = train_loader
-        self.test_loader = test_loader
-        self.criterion = criterion
-        self.optimizer = optimizer
-        self.num_epochs = num_epochs
-        self.n_classes = n_classes
-
-    def train(self):
-        for epoch in range(self.num_epochs):
-            self.model.train()  # Set the model to training mode
-            running_loss = 0.0
-            for inputs, labels, _ in self.train_loader:
-                self.optimizer.zero_grad()
-                outputs = self.model(inputs)
-                loss = self.criterion(outputs, labels)
-                loss.backward()
-                self.optimizer.step()
-                running_loss += loss.item()
-
-            # Print average loss for the epoch
-            print(f"Epoch {epoch + 1}/{self.num_epochs}, Loss: {running_loss / len(self.train_loader)}")
-
-            # Test the model after each epoch
-            self.test()
-
-    def test(self):
-        self.model.eval()  # Set the model to evaluation mode
-        correct = 0
-        total = 0
-        TP, FP, FN = [0] * self.n_classes, [0] * self.n_classes, [0] * self.n_classes
-        with torch.no_grad():
-            for inputs, labels, _ in self.test_loader:
-                outputs = self.model(inputs)
-                _, predicted_labels = torch.max(outputs, 1) 
-                total += labels.size(0)
-                correct += (predicted_labels == labels).sum().item()
-                
-                for i in range(self.n_classes):
-                    TP[i] += ((predicted_labels == i) & (labels == i)).sum().item()
-                    FP[i] += ((predicted_labels == i) & (labels != i)).sum().item()
-                    FN[i] += ((predicted_labels != i) & (labels == i)).sum().item()
-        
-        # Compute precision, recall, and F1 score for each class
-        precision = [TP[i] / (TP[i] + FP[i]) if (TP[i] + FP[i]) > 0 else 0 for i in range(self.n_classes)]
-        recall = [TP[i] / (TP[i] + FN[i]) if (TP[i] + FN[i]) > 0 else 0 for i in range(self.n_classes)]
-        f1_score = [2 * (precision[i] * recall[i]) / (precision[i] + recall[i]) if (precision[i] + recall[i]) > 0 else 0 for i in range(self.n_classes)]
-
-        # To compute the average across classes
-        avg_precision = sum(precision) / self.n_classes
-        avg_recall = sum(recall) / self.n_classes
-        avg_f1_score = sum(f1_score) / self.n_classes
-
-        # Overall accuracy
-        accuracy = correct / total if total > 0 else 0
-
-        # Print accuracy on the test set
-        # accuracy = correct / total
-        # print(f"Accuracy on the test set: {accuracy}")
-
-        # Print the computed metrics
-        print(f"Accuracy on the test set: {accuracy}")
-        print(f"Average Precision on the test set: {avg_precision}")
-        print(f"Average Recall on the test set: {avg_recall}")
-        print(f"Average F1 Score on the test set: {avg_f1_score}")
