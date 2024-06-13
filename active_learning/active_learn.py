@@ -7,11 +7,11 @@ class ActiveLearning:
     def __init__(self, num_active_points):
         self.num_active_points = num_active_points
 
-    def get_points(self, mode, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=0.0001):
+    def get_points(self, mode, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
         if mode == "random":
             return self.get_random_points(idx_pool, coordinates, cost_factor)
         else:
-            return self.get_active_points(mode, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=0.0001)
+            return self.get_active_points(mode, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1)
 
     def get_random_points(self, idx_pool, coordinates, cost_factor):
         # create a list of random numbers as integers from 0 to len(idx_pool)
@@ -25,7 +25,7 @@ class ActiveLearning:
             cost_total += distance_cost[index].item()
         return random_idx_pool, cost_total
     
-    def get_active_points(self, learning_option, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=0.0001):
+    def get_active_points(self, learning_option, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
         cost_total = 0
         cost_enabled = coordinates is not None
 
@@ -38,11 +38,13 @@ class ActiveLearning:
         distance_cost = self.compute_distances(coordinates[idx_pool], initial_coord, cost_factor)
 
         if learning_option == "mutual_info_cost":
-            mutual_info_cost = mutual_info / distance_cost
+            mutual_info_norm = (mutual_info - torch.mean(mutual_info))/torch.std(mutual_info)
+            distance_norm = (distance_cost - torch.mean(distance_cost))/torch.std(distance_cost)
+            mutual_info_cost = mutual_info_norm - distance_norm
         elif learning_option == "mutual_info":
             mutual_info_cost = mutual_info
         elif learning_option == "cost":
-            mutual_info_cost = 1 / distance_cost
+            mutual_info_cost = -distance_cost
 
         _, mi_indices = mutual_info_cost.topk(1)
         selected_ind = mi_indices.tolist()
