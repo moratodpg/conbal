@@ -1,8 +1,8 @@
-name: camp_ind_05
+name: multiple
 method: random
 metric:
   goal: maximize
-  name: f1_score
+  name: score
 parameters:
   dropout:
     value: 0.1
@@ -15,13 +15,13 @@ parameters:
   weight_decay:
     value: 0.0001
   dataset:
-    value: datasets/subset_build_6kB_dataset.pth
+    value: datasets/build_24k.pth
   mode:
-    value: active_learning_cost
+    value: random
   active_points:
     value: 5
   active_iterations:
-    value: 250 # 1000 typically
+    value: 200 # 1000 typically
   num_forwards:
     value: 100
   batch_size:

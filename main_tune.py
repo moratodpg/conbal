@@ -122,21 +122,11 @@ def training_loop(config=None):
             idx_train = train_ds.indices
 
             trainer.model.load_state_dict(trainer.best_model)
+            
 
-            ## Get active points
-            if mode == "active_learning":
-                selected_idx_pool = active_learn.get_active_point(trainer.model, num_forwards, buildings_dataset, idx_pool)
-            elif mode == "multiple_active_learning":
-                selected_idx_pool = active_learn.get_active_points(trainer.model, num_forwards, buildings_dataset, idx_pool)
-            elif mode == "active_learning_cost":
-                selected_idx_pool, cost_accum = active_learn.get_active_points_cost(trainer.model, num_forwards, buildings_dataset, idx_pool, coordinates)
-                cost_total += cost_accum
-                wandb.log({"cost_accum": cost_accum})
-            else:
-                selected_idx_pool = active_learn.get_random_points(idx_pool)
-                # selected_idx_pool, cost_accum = active_learn.get_random_points(idx_pool, loc_identifier)
-                # cost_total += cost_accum
-                # wandb.log({"cost_accum": cost_accum})
+            selected_idx_pool, cost_accum = active_learn.get_points(mode, trainer.model, num_forwards, buildings_dataset, idx_pool, coordinates)
+            wandb.log({"cost_accum": cost_accum})
+            cost_total += cost_accum
             
             ## Updated indices based on selected samples
             idx_pool_ = [idx for idx in idx_pool if idx not in selected_idx_pool]
