@@ -7,7 +7,7 @@ class ActiveLearning:
     def __init__(self, num_active_points):
         self.num_active_points = num_active_points
 
-    def get_active_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+    def get_active_point(self, net_current, num_forwards, buildings_dataset, idx_pool):
         predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
         mutual_info = self.mutual_information(predicts)
         # active points
@@ -37,14 +37,12 @@ class ActiveLearning:
         random_idx_pool = random_idx_pool.tolist()
         return random_idx_pool
     
-    def get_multiple_active_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+    def get_active_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
         predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
         entropy = self.predictive_entropy(predicts)
         entropy_sum = self.expected_conditional_entropy(predicts)
         mutual_info = entropy - entropy_sum
 
-        # Get first active point
-        n_active_points = self.num_active_points
         _, mi_indices = mutual_info.topk(1)
         selected_ind = mi_indices.tolist()
 
@@ -52,7 +50,7 @@ class ActiveLearning:
         selected_predicts = predicts[selected_ind[-1]].unsqueeze(0)
         stored_predicts = selected_predicts.clone()
 
-        for _ in range(n_active_points - 1):
+        for _ in range(self.num_active_points - 1):
 
             # Compute the conditional entropy 
             joint_cond_entropy = entropy_sum + entropy_sum[selected_ind].sum()
@@ -85,81 +83,63 @@ class ActiveLearning:
 
         return selected_idx_pool
     
-    def get_active_points_cost(self, net_current, num_forwards, buildings_dataset, idx_pool, loc_identifier):
-        camp_cost = 0.5 #(Before it was 0.03, then 0.1)
-        ind_cost = 1
+    def get_active_points_cost(self, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=0.005):
+        cost_total = 0
+
         predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
-
-        # Compute predictive entropy
-        avg_predicts = torch.mean(predicts, dim=1)
-        eps = 1e-9
-        avg_probs_clamped = torch.clamp(avg_predicts, min=eps)
-        entropy = -torch.sum(avg_probs_clamped * torch.log2(avg_probs_clamped), dim=1)
-
-        # Compute expected entropy
-        prob_clamped = torch.clamp(predicts, min=eps)
-        entropy_i = -torch.sum(prob_clamped * torch.log2(prob_clamped), dim=2)
-        entropy_sum = entropy_i.sum(dim=1) / num_forwards
-
-        # Compute mutual information
+        entropy = self.predictive_entropy(predicts)
+        entropy_sum = self.expected_conditional_entropy(predicts)
         mutual_info = entropy - entropy_sum
 
-        # active points
-        n_active_points = self.num_active_points
-        mi_values, mi_indices = mutual_info.topk(1)
+        initial_coord = torch.tensor([91283, 437631])
+        distance_cost = self.compute_distances(coordinates[idx_pool], initial_coord, cost_factor)
+        mutual_info_cost = mutual_info / distance_cost
 
+        _, mi_indices = mutual_info_cost.topk(1)
         selected_ind = mi_indices.tolist()
-        # Auditing locations
-        build_locations = loc_identifier[idx_pool]
-        selected_locations = build_locations[mi_indices]
-        cost_accum = camp_cost
+        cost_total += distance_cost[selected_ind[-1]].item()
 
-        for _ in range(n_active_points - 1):
+        # Evaluate the first point and store it
+        selected_predicts = predicts[selected_ind[-1]].unsqueeze(0)
+        stored_predicts = selected_predicts.clone()
 
-            # Compute the conditional entropy
-            sum_conditional_entropy = torch.zeros(1)
-            for index in selected_ind: # Iterate over already selected buildings
-                sum_conditional_entropy += entropy_sum[index]
-            joint_cond_entropy = entropy_sum + sum_conditional_entropy
-            # print(sum_conditional_entropy, joint_cond_entropy, entropy_sum)
+        for _ in range(self.num_active_points - 1):
 
-            # Compute joint entropy
-            ## Expanded joint entropy for all possible combinations
-            tensor_list = []
-            tensor_list.append(predicts)
-            for index in selected_ind:
-                tensor_list.append(predicts[index, :, :].unsqueeze(0))
-            expanded_joint_entropy = self.combine_class_products(tensor_list)
-            #print(expanded_joint_entropy.shape, expanded_joint_entropy)
-            avg_combinedj_entropy = torch.mean(expanded_joint_entropy, dim=1)
+            # Compute the conditional entropy 
+            joint_cond_entropy = entropy_sum + entropy_sum[selected_ind].sum()
+            # print(joint_cond_entropy)
+
+            # [samples, num_classes^n-1, num_classes] = [1, num_classes, num_forwards] x [samples, num_forwards, num_classes]
+            joint_per_sample = torch.einsum('ijk , bkc -> bjc' , selected_predicts.transpose(1,2) , predicts)
+            joint_per_sample = joint_per_sample.reshape(-1, joint_per_sample.shape[1]*joint_per_sample.shape[2])/num_forwards
+
             eps = 1e-9
-            avg_combinedj_clamped = torch.clamp(avg_combinedj_entropy, min=eps)
-            joint_entropy = -torch.sum(avg_combinedj_clamped * torch.log2(avg_combinedj_clamped), dim=1)
+            joint_entropy_clamped = torch.clamp(joint_per_sample, min=eps)
+            joint_predictive_entropy = -torch.sum(joint_entropy_clamped * torch.log2(joint_entropy_clamped), dim=1)
 
-            # Joint mutual information
-            joint_mutual_info = joint_entropy - joint_cond_entropy
+            joint_mutual_info = joint_predictive_entropy - joint_cond_entropy
 
-            # Cost tensor based on location
-            cost_tensor = torch.ones(len(idx_pool)) * (camp_cost + ind_cost)
-            inspected_build = torch.isin(build_locations, selected_locations)
-            cost_tensor[inspected_build] = ind_cost
-
-            # MI divided by cost
-            joint_mutual_info = joint_mutual_info / cost_tensor
+            # Compute distance cost
+            distance_cost = self.compute_distances(coordinates[idx_pool], coordinates[idx_pool[selected_ind[-1]]], cost_factor)
+            joint_mutual_info_cost = joint_mutual_info / distance_cost
 
             # Mask already selected indices
-            joint_mutual_info[selected_ind] = 0
+            joint_mutual_info_cost[selected_ind] = 0
 
             # Select the next batch active point
-            mi_values, mi_indices = joint_mutual_info.topk(1)
-            selected_locations = torch.cat((selected_locations, build_locations[mi_indices]))
+            _, mi_indices = joint_mutual_info_cost.topk(1)
             selected_ind.append(mi_indices.item())
-            cost_accum += cost_tensor[mi_indices].item()
+            cost_total += distance_cost[selected_ind[-1]].item()
+
+            # Store the selected point
+            selected_predicts = predicts[selected_ind[-1]]
+            selected_predicts = torch.einsum('ik,il->ikl', selected_predicts, stored_predicts.squeeze(0)).reshape(num_forwards, -1).unsqueeze(0)
+            stored_predicts = selected_predicts.clone()
 
         # From the selected indices, get the indices from the pool
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
 
-        return selected_idx_pool, cost_accum
+        return selected_idx_pool, cost_total
     
     def predict(self, model, inputs, forward_passes):
         model.train()
@@ -191,3 +171,13 @@ class ActiveLearning:
         expected_conditional_entropy = self.expected_conditional_entropy(predictions)
         mutual_info = predictive_entropy - expected_conditional_entropy
         return mutual_info
+    
+    def compute_distances(self, buildings_tensor, ref_coord, cost_factor=0.005):
+        # Compute the differences in coordinates
+        differences = buildings_tensor - ref_coord
+        # Compute the squared differences and sum them along the last dimension
+        squared_differences = differences ** 2
+        squared_distances = squared_differences.sum(dim=1)
+        # Compute the square root of the squared distances to get the Euclidean distances
+        distances = torch.sqrt(squared_distances)*cost_factor
+        return distances

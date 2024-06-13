@@ -24,7 +24,7 @@ def training_loop(config=None):
 
         num_train = 70
         num_test = 3000
-        num_epochs = 300
+        num_epochs = 200
         num_classes = 7
 
         batch_size = config.batch_size
@@ -43,6 +43,9 @@ def training_loop(config=None):
 
         # Assuming you have created a Buildings dataset instance named buildings_dataset
         buildings_dataset = torch.load(dataset_th_file)
+
+        # Load coordinates
+        coordinates = torch.load("datasets/build_24k_coord.pth")
 
         # Calculate the length of the dataset
         total_samples = len(buildings_dataset)
@@ -122,11 +125,11 @@ def training_loop(config=None):
 
             ## Get active points
             if mode == "active_learning":
-                selected_idx_pool = active_learn.get_active_points(trainer.model, num_forwards, buildings_dataset, idx_pool)
+                selected_idx_pool = active_learn.get_active_point(trainer.model, num_forwards, buildings_dataset, idx_pool)
             elif mode == "multiple_active_learning":
-                selected_idx_pool = active_learn.get_multiple_active_points(trainer.model, num_forwards, buildings_dataset, idx_pool)
+                selected_idx_pool = active_learn.get_active_points(trainer.model, num_forwards, buildings_dataset, idx_pool)
             elif mode == "active_learning_cost":
-                selected_idx_pool, cost_accum = active_learn.get_active_points_cost(trainer.model, num_forwards, buildings_dataset, idx_pool, loc_identifier)
+                selected_idx_pool, cost_accum = active_learn.get_active_points_cost(trainer.model, num_forwards, buildings_dataset, idx_pool, coordinates)
                 cost_total += cost_accum
                 wandb.log({"cost_accum": cost_accum})
             else:
@@ -154,7 +157,7 @@ def training_loop(config=None):
         torch.save(trainer.model.state_dict(), "final_model_stored.pth")
     
 if __name__ == "__main__":
-    config_file = "config/al.yaml"
+    config_file = "config/al_multiple.yaml"
 
     # wandb.login()
 
