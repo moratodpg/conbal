@@ -38,11 +38,15 @@ class ActiveLearning:
         distance_cost = self.compute_distances(coordinates[idx_pool], initial_coord, cost_factor)
 
         if learning_option == "mutual_info_cost":
-            mutual_info_norm = (mutual_info - torch.mean(mutual_info))/torch.std(mutual_info)
-            distance_norm = (distance_cost - torch.mean(distance_cost))/torch.std(distance_cost)
-            mutual_info_cost = mutual_info_norm - distance_norm
+            # mutual_info_norm = (mutual_info - torch.mean(mutual_info))/torch.std(mutual_info)
+            # distance_norm = (distance_cost - torch.mean(distance_cost))/torch.std(distance_cost)
+            mutual_info_norm = (mutual_info - torch.min(mutual_info))/(torch.max(mutual_info) - torch.min(mutual_info))
+            distance_norm = (distance_cost - torch.min(distance_cost))/(torch.max(distance_cost) - torch.min(distance_cost))
+            mutual_info_cost = 4*mutual_info_norm - distance_norm
         elif learning_option == "mutual_info":
             mutual_info_cost = mutual_info
+        elif learning_option == "entropy":
+            mutual_info_cost = -entropy
         elif learning_option == "cost":
             mutual_info_cost = -distance_cost
 
@@ -73,9 +77,16 @@ class ActiveLearning:
 
             distance_cost = self.compute_distances(coordinates[idx_pool], coordinates[idx_pool[selected_ind[-1]]], cost_factor)
             if learning_option == "mutual_info_cost":
-                joint_mutual_info = joint_mutual_info / distance_cost
+                # joint_mutual_norm = (joint_mutual_info - torch.mean(joint_mutual_info))/torch.std(joint_mutual_info)
+                # distance_norm = (distance_cost - torch.mean(distance_cost))/torch.std(distance_cost)
+                joint_mutual_norm = (joint_mutual_info - torch.min(joint_mutual_info))/(torch.max(joint_mutual_info) - torch.min(joint_mutual_info))
+                distance_norm = (distance_cost - torch.min(distance_cost))/(torch.max(distance_cost) - torch.min(distance_cost))
+                joint_mutual_info = 4*joint_mutual_norm - distance_norm
+                # joint_mutual_info = joint_mutual_info / distance_cost
+            elif learning_option == "entropy":
+                joint_mutual_info = -joint_predictive_entropy
             elif learning_option == "cost":
-                joint_mutual_info = 1 / distance_cost
+                joint_mutual_info = -distance_cost
                 
             # Mask already selected indices
             joint_mutual_info[selected_ind] = 0
