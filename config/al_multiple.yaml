@@ -30,5 +30,6 @@ parameters:
     value: 32
   save_interval:
     value: 50
-  
+  seed:
+    value: None
   
