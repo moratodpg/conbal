@@ -15,16 +15,20 @@ parameters:
   weight_decay:
     value: 0.0001
   dataset:
-    value: datasets/build_24k.pth
+    value: build_24k
   mode:
-    value: random
+    value: entropy
   active_points:
     value: 5
   active_iterations:
     value: 200 # 1000 typically
+  num_epochs:
+    value: 200
   num_forwards:
     value: 100
   batch_size:
     value: 32
+  save_interval:
+    value: 50
   
   
