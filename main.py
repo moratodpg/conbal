@@ -12,17 +12,27 @@ import wandb
 import yaml
 import pprint
 import argparse
-
-# os.environ["WANDB_MODE"] = "offline"
+import random
 
 from models.dnn import Trainer, MLP_dropout
 from datasets.buildings_dataset import Buildings
 from active_learning.active_learn import ActiveLearning
 
-def training_loop(config=None):
-    with wandb.init(config=config, mode="offline"):
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
 
+
+def training_loop(config=None):
+    with wandb.init(config=config, mode="online", name=custom_name):
         config = wandb.config
+
+        seed = int(config.seed)
+        set_seed(seed)
 
         num_epochs = config.num_epochs
         batch_size = config.batch_size
@@ -52,6 +62,11 @@ def training_loop(config=None):
         results_dir = "results"
         os.makedirs(results_dir, exist_ok=True)
 
+        # Save the updated configuration to a file
+        updated_config_filename = os.path.join(results_dir, f"{start_time}_{custom_name}_config.yaml")
+        with open(updated_config_filename, 'w') as config_file:
+            yaml.dump(dict(config), config_file)
+
         train_ds = Subset(buildings_dataset, subset_build["train"])
         test_ds = Subset(buildings_dataset, subset_build["test"])
         pool_ds = Subset(buildings_dataset, subset_build["pool"])
@@ -70,8 +85,6 @@ def training_loop(config=None):
 
         # Create dictionary with two keys: "accuracy_test" and "cost"
         score_AL = {"accuracy_test": [], "cost": []}
-
-
         cost_total = 0
 
         for i in range(num_active_iter):
@@ -135,10 +148,14 @@ if __name__ == "__main__":
     # wandb.login()
     with open(config_file, "r") as file:
         config = yaml.safe_load(file)
+
+    if config["parameters"]["seed"]["value"] == "None":
+        config["parameters"]["seed"]["value"] = random.randint(0, 1000000) 
+    
     custom_name = args.filename
     pprint.pprint(config)
     # Initialize the sweep
-    sweep_id = wandb.sweep(config, project="storing_AL")
+    sweep_id = wandb.sweep(config, project="tests_AL")
     # Run the sweep
     wandb.agent(sweep_id, function=training_loop, count=1)
 
