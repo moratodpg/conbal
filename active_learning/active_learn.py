@@ -47,6 +47,11 @@ class ActiveLearning:
             mutual_info_cost = mutual_info
         elif learning_option == "entropy":
             mutual_info_cost = -entropy
+        elif learning_option == "var_ratio":
+            predicted_classes = torch.argmax(predicts, dim=2)
+            mode_vals, _ = torch.mode(predicted_classes, dim=1)
+            n_c = torch.stack([torch.sum(predicted_classes[i] == mode_vals[i]) for i in range(predicted_classes.shape[0])])
+            mutual_info_cost = 1 - n_c / num_forwards
         elif learning_option == "cost":
             mutual_info_cost = -distance_cost
 
