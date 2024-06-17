@@ -22,7 +22,7 @@ class ActiveLearning:
         for index in random_idx_pool:
             distance_cost = self.compute_distances(coordinates, initial_coord, cost_factor)
             initial_coord = coordinates[index]
-            cost_total += distance_cost[index].item()
+            cost_total += distance_cost[index].item()/1000
         return random_idx_pool, cost_total
     
     def get_active_points(self, learning_option, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
