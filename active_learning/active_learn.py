@@ -58,7 +58,7 @@ class ActiveLearning:
         _, mi_indices = mutual_info_cost.topk(1)
         selected_ind = mi_indices.tolist()
 
-        cost_total += distance_cost[selected_ind[-1]].item()
+        cost_total += distance_cost[selected_ind[-1]].item()/1000
 
         # Evaluate the first point and store it
         selected_predicts = predicts[selected_ind[-1]].unsqueeze(0)
@@ -104,7 +104,7 @@ class ActiveLearning:
             # Select the next batch active point
             _, mi_indices = joint_mutual_info.topk(1)
             selected_ind.append(mi_indices.item())
-            cost_total += distance_cost[selected_ind[-1]].item()
+            cost_total += distance_cost[selected_ind[-1]].item()/1000
 
             # Store the selected point
             selected_predicts = predicts[selected_ind[-1]]
