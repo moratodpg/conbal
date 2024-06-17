@@ -63,7 +63,7 @@ def training_loop(config=None):
         os.makedirs(results_dir, exist_ok=True)
 
         # Save the updated configuration to a file
-        updated_config_filename = os.path.join(results_dir, f"{start_time}_{custom_name}_config.yaml")
+        updated_config_filename = os.path.join(results_dir, f"{custom_name}_{start_time}_config.yaml")
         with open(updated_config_filename, 'w') as config_file:
             yaml.dump(dict(config), config_file)
 
@@ -123,18 +123,18 @@ def training_loop(config=None):
             print(len(pool_ds), len(train_ds))
 
             if i % save_interval == 0:
-                model_filename = os.path.join(results_dir, f"{start_time}_{custom_name}.pth")
+                model_filename = os.path.join(results_dir, f"{custom_name}_{start_time}.pth")
                 torch.save(trainer.model.state_dict(), model_filename)
                 print(f"Model saved: {model_filename}")
-                model_filename = os.path.join(results_dir, f"{start_time}_{custom_name}.json")
+                model_filename = os.path.join(results_dir, f"{custom_name}_{start_time}.json")
                 with open(model_filename, 'w') as f:
                     json.dump(score_AL, f)
         
         # Storing the final model
-        model_filename = os.path.join(results_dir, f"{start_time}_{custom_name}.pth")
+        model_filename = os.path.join(results_dir, f"{custom_name}_{start_time}.pth")
         torch.save(trainer.model.state_dict(), model_filename)
         print(f"Model saved: {model_filename}")
-        model_filename = os.path.join(results_dir, f"{start_time}_{custom_name}.json")
+        model_filename = os.path.join(results_dir, f"{custom_name}_{start_time}.json")
         with open(model_filename, 'w') as f:
             json.dump(score_AL, f)
     

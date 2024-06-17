@@ -3,6 +3,10 @@ results/
 
 # Logs wandb
 wandb/
+logs/
+
+# Environment
+env/
 
 # torch files
 *.pth 
@@ -15,3 +19,4 @@ wandb/
 
 # Mac
 .DS_Store
+._.DS_Store
