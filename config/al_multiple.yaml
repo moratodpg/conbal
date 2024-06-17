@@ -17,7 +17,7 @@ parameters:
   dataset:
     value: build_24k
   mode:
-    value: entropy
+    value: var_ratio
   active_points:
     value: 5
   active_iterations:
