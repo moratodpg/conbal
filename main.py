@@ -117,9 +117,9 @@ def training_loop(config=None):
             ## Updated indices based on selected samples
             idx_pool_ = [idx for idx in idx_pool if idx not in selected_idx_pool]
             idx_train_ = idx_train + selected_idx_pool
-            score_AL["idx_train"].append(idx_train_)
-            score_AL["idx_pool"].append(idx_pool_)
-            score_AL["idx_test"].append(idx_test)
+            score_AL["idx_train"] = idx_train_
+            score_AL["idx_pool"] = idx_pool_
+            score_AL["idx_test"] = idx_test
 
             ## Updated subdatasets based on selected samples
             train_ds = torch.utils.data.dataset.Subset(buildings_dataset, idx_train_) 
