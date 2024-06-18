@@ -84,7 +84,7 @@ def training_loop(config=None):
         active_learn = ActiveLearning(num_active_points=number_active_points)
 
         # Create dictionary with two keys: "accuracy_test" and "cost"
-        score_AL = {"accuracy_test": [], "cost": []}
+        score_AL = {"accuracy_test": [], "cost": [], "idx_train": [], "idx_pool": [], "idx_test": []}
         cost_total = 0
 
         for i in range(num_active_iter):
@@ -105,6 +105,7 @@ def training_loop(config=None):
             ## Loop
             idx_pool = pool_ds.indices
             idx_train = train_ds.indices
+            idx_test = test_ds.indices
 
             trainer.model.load_state_dict(trainer.best_model)
 
@@ -116,6 +117,9 @@ def training_loop(config=None):
             ## Updated indices based on selected samples
             idx_pool_ = [idx for idx in idx_pool if idx not in selected_idx_pool]
             idx_train_ = idx_train + selected_idx_pool
+            score_AL["idx_train"].append(idx_train_)
+            score_AL["idx_pool"].append(idx_pool_)
+            score_AL["idx_test"].append(idx_test)
 
             ## Updated subdatasets based on selected samples
             train_ds = torch.utils.data.dataset.Subset(buildings_dataset, idx_train_) 
