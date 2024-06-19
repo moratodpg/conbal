@@ -59,11 +59,12 @@ def training_loop(config=None):
             subset_build = json.load(f)
 
         start_time = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        results_dir = "results"
-        os.makedirs(results_dir, exist_ok=True)
+        file_name = f"{custom_name}_{start_time}"
+        results_dir = ["results/models/" + file_name, "results/json/" + file_name]
+        [os.makedirs(dir, exist_ok=True) for dir in results_dir]
 
         # Save the updated configuration to a file
-        updated_config_filename = os.path.join(results_dir, f"{custom_name}_{start_time}_config.yaml")
+        updated_config_filename = os.path.join(results_dir[1], "config.yaml")
         with open(updated_config_filename, 'w') as config_file:
             yaml.dump(dict(config), config_file)
 
@@ -127,18 +128,18 @@ def training_loop(config=None):
             print(len(pool_ds), len(train_ds))
 
             if i % save_interval == 0:
-                model_filename = os.path.join(results_dir, f"{custom_name}_{start_time}.pth")
+                model_filename = os.path.join(results_dir[0], f"net_{i}.pth")
                 torch.save(trainer.model.state_dict(), model_filename)
                 print(f"Model saved: {model_filename}")
-                model_filename = os.path.join(results_dir, f"{custom_name}_{start_time}.json")
+                model_filename = os.path.join(results_dir[1], "output.json")
                 with open(model_filename, 'w') as f:
                     json.dump(score_AL, f)
         
         # Storing the final model
-        model_filename = os.path.join(results_dir, f"{custom_name}_{start_time}.pth")
+        model_filename = os.path.join(results_dir[0], f"net_last.pth")
         torch.save(trainer.model.state_dict(), model_filename)
         print(f"Model saved: {model_filename}")
-        model_filename = os.path.join(results_dir, f"{custom_name}_{start_time}.json")
+        model_filename = os.path.join(results_dir[1], "output.json")
         with open(model_filename, 'w') as f:
             json.dump(score_AL, f)
     
