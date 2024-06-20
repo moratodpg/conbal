@@ -55,9 +55,6 @@ class ActiveLearning:
         elif learning_option[0] == "cost":
             mutual_info_cost = -distance_cost
 
-        _, mi_indices = mutual_info_cost.topk(1)
-        selected_ind = mi_indices.tolist()
-
         if learning_option[1]:
             _, mi_indices = mutual_info_cost.topk(self.num_active_points)
             selected_ind = mi_indices.tolist()
@@ -66,7 +63,9 @@ class ActiveLearning:
             # From the selected indices, get the indices from the pool
             selected_idx_pool = [idx_pool[i] for i in selected_ind]
             return selected_idx_pool, cost_total
-
+        
+        _, mi_indices = mutual_info_cost.topk(1)
+        selected_ind = mi_indices.tolist()
         cost_total += distance_cost[selected_ind[-1]].item()/1000
 
         # Evaluate the first point and store it
