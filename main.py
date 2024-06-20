@@ -45,6 +45,7 @@ def training_loop(config=None):
         number_active_points = config.active_points
         num_active_iter = config.active_iterations
         mode = config.mode # "random"
+        independent_mode = config.independent_mode
         save_interval = config.save_interval
 
         dataset_file = config.dataset
@@ -110,7 +111,7 @@ def training_loop(config=None):
 
             trainer.model.load_state_dict(trainer.best_model)
 
-            selected_idx_pool, cost = active_learn.get_points(mode, trainer.model, num_forwards, buildings_dataset, idx_pool, coordinates)
+            selected_idx_pool, cost = active_learn.get_points(mode, independent_mode, trainer.model, num_forwards, buildings_dataset, idx_pool, coordinates)
             score_AL["cost"].append(cost)
             wandb.log({"cost_accum": cost})
             cost_total += cost
