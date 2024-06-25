@@ -1,0 +1,37 @@
+name: tune
+method: random
+metric:
+  goal: maximize
+  name: score
+parameters:
+  dropout:
+    value: [0.1, 0.2, 0.3, 0.4, 0.5]
+  learning_rate:
+    value: [0.0001, 0.0005, 0.001, 0.005]
+  hidden_size:
+    value: [128, 256, 512]
+  layers:
+    value: [2, 3]
+  weight_decay:
+    value: [0.0001, 0.0005, 0.001, 0.005]
+  dataset:
+    value: build_6k
+  mode:
+    value: mutual_info
+  independent_mode:
+    value: False
+  active_points:
+    value: 5
+  active_iterations:
+    value: 400 # 1000 typically
+  num_epochs:
+    value: 200
+  num_forwards:
+    value: 100
+  batch_size:
+    value: 32
+  save_interval:
+    value: 500
+  seed:
+    value: 473048
+  
