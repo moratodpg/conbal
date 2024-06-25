@@ -5,15 +5,15 @@ metric:
   name: score
 parameters:
   dropout:
-    value: [0.1, 0.2, 0.3, 0.4, 0.5]
+    values: [0.1, 0.2, 0.3, 0.4, 0.5]
   learning_rate:
-    value: [0.0001, 0.0005, 0.001, 0.005]
+    values: [0.0001, 0.0005, 0.001, 0.005]
   hidden_size:
-    value: [128, 256, 512]
+    values: [128, 256, 512]
   layers:
-    value: [2, 3]
+    values: [2, 3]
   weight_decay:
-    value: [0.0001, 0.0005, 0.001, 0.005]
+    values: [0.0001, 0.0005, 0.001, 0.005]
   dataset:
     value: build_6k
   mode:
@@ -34,4 +34,7 @@ parameters:
     value: 500
   seed:
     value: 473048
-  
+command:
+  - ${env}
+  - python
+  - tune.py

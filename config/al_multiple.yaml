@@ -15,9 +15,11 @@ parameters:
   weight_decay:
     value: 0.0001
   dataset:
-    value: build_24k
+    value: build_6k
   mode:
-    value: var_ratio
+    value: mutual_info
+  independent_mode:
+    value: False
   active_points:
     value: 5
   active_iterations:
