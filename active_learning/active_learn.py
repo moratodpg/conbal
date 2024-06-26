@@ -113,11 +113,14 @@ class ActiveLearning:
             _, mi_indices = joint_mutual_info.topk(1)
             selected_ind.append(mi_indices.item())
             cost_total += distance_cost[selected_ind[-1]].item()/1000
-
+            
             # Store the selected point
             selected_predicts = predicts[selected_ind[-1]]
             selected_predicts = torch.einsum('ik,il->ikl', selected_predicts, stored_predicts.squeeze(0)).reshape(num_forwards, -1).unsqueeze(0)
             stored_predicts = selected_predicts.clone()
+
+        # Last point (return cost)
+        cost_total += self.compute_distances(coordinates[idx_pool[selected_ind[-1]]].unsqueeze(0), initial_coord, cost_factor).item()/1000
 
         # From the selected indices, get the indices from the pool
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
