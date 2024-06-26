@@ -45,6 +45,14 @@ class ActiveLearning:
             mutual_info_cost = 4*mutual_info_norm - distance_norm
         elif learning_option[0] == "mutual_info":
             mutual_info_cost = mutual_info
+        elif learning_option[0] == "adaptive_cost_threshold":
+            budget_points = self.num_active_points
+            budget_cost = 30
+            cost_threshold = budget_cost / (budget_points)
+            # Mask points that are above the cost threshold
+            distance_cost_mask = distance_cost/1000 > cost_threshold
+            mutual_info_cost = mutual_info.clone()
+            mutual_info_cost[distance_cost_mask] = 0
         elif learning_option[0] == "entropy":
             mutual_info_cost = entropy
         elif learning_option[0] == "var_ratio":
@@ -67,6 +75,10 @@ class ActiveLearning:
         _, mi_indices = mutual_info_cost.topk(1)
         selected_ind = mi_indices.tolist()
         cost_total += distance_cost[selected_ind[-1]].item()/1000
+
+        if learning_option[0] == "adaptive_cost_threshold":
+            budget_cost -= distance_cost[selected_ind[-1]].item()/1000
+            budget_points -= 1
 
         # Evaluate the first point and store it
         selected_predicts = predicts[selected_ind[-1]].unsqueeze(0)
@@ -96,6 +108,10 @@ class ActiveLearning:
                 distance_norm = (distance_cost - torch.min(distance_cost))/(torch.max(distance_cost) - torch.min(distance_cost))
                 joint_mutual_info = 4*joint_mutual_norm - distance_norm
                 # joint_mutual_info = joint_mutual_info / distance_cost
+            elif learning_option[0] == "adaptive_cost_threshold":
+                budget_threshold = budget_cost / (budget_points)
+                distance_cost_mask = distance_cost/1000 > budget_threshold
+                joint_mutual_info[distance_cost_mask] = 0
             elif learning_option[0] == "entropy":
                 joint_mutual_info = joint_predictive_entropy
             elif learning_option[0] == "var_ratio":
@@ -114,10 +130,17 @@ class ActiveLearning:
             selected_ind.append(mi_indices.item())
             cost_total += distance_cost[selected_ind[-1]].item()/1000
 
+            if learning_option[0] == "adaptive_cost_threshold":
+                budget_cost -= distance_cost[selected_ind[-1]].item()/1000
+                budget_points -= 1
+
             # Store the selected point
             selected_predicts = predicts[selected_ind[-1]]
             selected_predicts = torch.einsum('ik,il->ikl', selected_predicts, stored_predicts.squeeze(0)).reshape(num_forwards, -1).unsqueeze(0)
             stored_predicts = selected_predicts.clone()
+
+        # Last point (return cost)
+        # cost_total += self.compute_distances(coordinates[idx_pool[selected_ind[-1]]].unsqueeze(0), initial_coord, cost_factor).item()/1000
 
         # From the selected indices, get the indices from the pool
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
