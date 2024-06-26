@@ -4,6 +4,7 @@ results/
 # Logs wandb
 wandb/
 logs/
+tune_logs/
 
 # Environment
 env/
