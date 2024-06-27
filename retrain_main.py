@@ -31,10 +31,10 @@ class Retrainer:
         self.num_classes = num_classes
         self.score = 0
         self.best_val_score = float('-inf')
-        self.epochs_without_improvement = 0
         self.best_model = None
 
     def train(self, train_loader):
+        # epochs_without_improvement = 0
         for epoch in range(self.num_epochs):
             self.model.train()  # Set the model to training mode
             running_loss = 0.0
@@ -53,16 +53,16 @@ class Retrainer:
             # Early stopping check
             if val_score > self.best_val_score:
                 self.best_val_score = val_score
-                self.epochs_without_improvement = 0
+                # self.epochs_without_improvement = 0
                 self.best_model = copy.deepcopy(self.model.state_dict())
                 # print(f"Validation score is now: {val_score:.4f}")
-            else:
-                self.epochs_without_improvement += 1
-                #print(f"Validation loss did not decrease, count: {self.epochs_without_improvement}")
-                if self.epochs_without_improvement >= self.patience:
-                    print("Early stopping triggered", ", Epoch: " ,epoch + 1)
-                    self.test()
-                    break
+            # else:
+            #     self.epochs_without_improvement += 1
+            #     #print(f"Validation loss did not decrease, count: {self.epochs_without_improvement}")
+            #     if self.epochs_without_improvement >= self.patience:
+            #         print("Early stopping triggered", ", Epoch: " ,epoch + 1)
+            #         self.test()
+            #         break
 
             if epoch == (self.num_epochs - 1):
                 print(f"Epoch {epoch + 1}/{self.num_epochs}, Loss: {running_loss / len(train_loader)}")
