@@ -4,8 +4,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class ActiveLearning:
-    def __init__(self, num_active_points):
+    def __init__(self, num_active_points, budget_total):
         self.num_active_points = num_active_points
+        self.budget_total = budget_total
         self.strategy_map = {
             "random": self.get_random_points,
             "mutual_info": self.select_mutual_info,
@@ -138,7 +139,7 @@ class ActiveLearning:
         # distance_cost = self.compute_distances(coordinates[idx_pool], initial_coord, cost_factor)
 
         budget_points = self.num_active_points - 1
-        budget_cost = 30 # To be amended
+        budget = self.budget_total # To be amended
         
         _, mi_indices = mutual_info.topk(1)
         selected_ind = mi_indices.tolist()
@@ -161,7 +162,7 @@ class ActiveLearning:
 
             # Masking out points beyond adaptive threshold
             distance_cost = self.compute_distances(coordinates[idx_pool], coordinates[idx_pool[selected_ind[-1]]], cost_factor)
-            budget_threshold = budget_cost / (budget_points)
+            budget_threshold = budget / (budget_points)
             distance_cost_mask = distance_cost/1000 > budget_threshold
 
             joint_mutual_info[distance_cost_mask] = 0
@@ -171,7 +172,7 @@ class ActiveLearning:
             if joint_mutual_info.sum() == 0:
                 joint_mutual_info = joint_predictive_entropy - joint_cond_entropy
                 joint_mutual_info[selected_ind] = 0
-                distance_cost_mask = distance_cost/1000 > budget_cost
+                distance_cost_mask = distance_cost/1000 > budget
                 joint_mutual_info[distance_cost_mask] = 0
 
                 if joint_mutual_info.sum() == 0:
@@ -183,7 +184,7 @@ class ActiveLearning:
             selected_ind.append(mi_indices.item())
             cost_total += distance_cost[selected_ind[-1]].item()/1000
             
-            budget_cost -= distance_cost[selected_ind[-1]].item()/1000
+            budget -= distance_cost[selected_ind[-1]].item()/1000
             budget_points -= 1
 
             # Store the selected point

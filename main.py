@@ -44,6 +44,7 @@ def training_loop(config=None):
         dropout_rate = config.dropout
         number_active_points = config.active_points
         num_active_iter = config.active_iterations
+        budget_total = config.budget_total
         mode = config.mode # "random"
         independent_mode = config.independent_mode
         save_interval = config.save_interval
@@ -83,7 +84,7 @@ def training_loop(config=None):
         # pool_ds_0 = pool_ds
 
         test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
-        active_learn = ActiveLearning(num_active_points=number_active_points)
+        active_learn = ActiveLearning(num_active_points=number_active_points, budget_total = budget_total)
 
         # Create dictionary with two keys: "accuracy_test" and "cost"
         score_AL = {"accuracy_test": [], "cost": [], "idx_train": [], "idx_pool": [], "idx_test": []}
