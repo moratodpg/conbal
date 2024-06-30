@@ -87,6 +87,10 @@ def training_loop(config=None):
 
         # Create dictionary with two keys: "accuracy_test" and "cost"
         score_AL = {"accuracy_test": [], "cost": [], "idx_train": [], "idx_pool": [], "idx_test": []}
+        score_AL["idx_pool"] = pool_ds.indices
+        score_AL["idx_test"] = test_ds.indices
+        score_AL["idx_train"] = [train_ds.indices]
+
         cost_total = 0
 
         for i in range(num_active_iter):
@@ -104,10 +108,10 @@ def training_loop(config=None):
             trainer.train()
             score_AL["accuracy_test"].append(trainer.score)
             wandb.log({"score": trainer.score})
+
             ## Loop
             idx_pool = pool_ds.indices
             idx_train = train_ds.indices
-            idx_test = test_ds.indices
 
             trainer.model.load_state_dict(trainer.best_model)
 
@@ -119,9 +123,7 @@ def training_loop(config=None):
             ## Updated indices based on selected samples
             idx_pool_ = [idx for idx in idx_pool if idx not in selected_idx_pool]
             idx_train_ = idx_train + selected_idx_pool
-            score_AL["idx_train"] = idx_train_
-            score_AL["idx_pool"] = idx_pool_
-            score_AL["idx_test"] = idx_test
+            score_AL["idx_train"].append(selected_idx_pool)
 
             ## Updated subdatasets based on selected samples
             train_ds = torch.utils.data.dataset.Subset(buildings_dataset, idx_train_) 
