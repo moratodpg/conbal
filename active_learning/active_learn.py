@@ -17,12 +17,11 @@ class ActiveLearning:
         }
 
     ## Wrapper function to get the active points
-    def get_points(self, mode, independent_mode, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
+    def get_points(self, mode, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
         if mode == "random":
             return self.get_random_points(idx_pool, coordinates, cost_factor)
         else:
-            learning_option = [mode, independent_mode]
-            strategy = self.strategy_map.get(learning_option[0], self.strategy_map["mutual_info"])
+            strategy = self.strategy_map.get(mode, self.strategy_map["mutual_info"])
             return strategy(net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1)
     
     ## Helper functions
