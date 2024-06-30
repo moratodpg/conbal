@@ -149,9 +149,8 @@ class ActiveLearning:
         stored_predicts = selected_predicts.clone()
 
         for _ in range(self.num_active_points - 1):
-            # Compute the conditional entropy 
+            # Compute mutual information
             joint_cond_entropy = entropy_sum + entropy_sum[selected_ind].sum()
-            # print(joint_cond_entropy)
             # [samples, num_classes^n-1, num_classes] = [1, num_classes, num_forwards] x [samples, num_forwards, num_classes]
             joint_per_sample = torch.einsum('ijk , bkc -> bjc' , selected_predicts.transpose(1,2) , predicts)
             joint_per_sample = joint_per_sample.reshape(-1, joint_per_sample.shape[1]*joint_per_sample.shape[2])/num_forwards
@@ -160,12 +159,25 @@ class ActiveLearning:
             joint_predictive_entropy = -torch.sum(joint_entropy_clamped * torch.log2(joint_entropy_clamped), dim=1)
             joint_mutual_info = joint_predictive_entropy - joint_cond_entropy
 
+            # Masking out points beyond adaptive threshold
             distance_cost = self.compute_distances(coordinates[idx_pool], coordinates[idx_pool[selected_ind[-1]]], cost_factor)
             budget_threshold = budget_cost / (budget_points)
             distance_cost_mask = distance_cost/1000 > budget_threshold
+
             joint_mutual_info[distance_cost_mask] = 0
-            # Mask already selected indices
             joint_mutual_info[selected_ind] = 0
+
+            # Masking out points beyond total budget; if all exceed it, return collected points
+            if joint_mutual_info.sum() == 0:
+                joint_mutual_info = joint_predictive_entropy - joint_cond_entropy
+                joint_mutual_info[selected_ind] = 0
+                distance_cost_mask = distance_cost/1000 > budget_cost
+                joint_mutual_info[distance_cost_mask] = 0
+
+                if joint_mutual_info.sum() == 0:
+                    selected_idx_pool = [idx_pool[i] for i in selected_ind]
+                    return selected_idx_pool, cost_total
+
             # Select the next batch active point
             _, mi_indices = joint_mutual_info.topk(1)
             selected_ind.append(mi_indices.item())
