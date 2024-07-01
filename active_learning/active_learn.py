@@ -76,7 +76,7 @@ class ActiveLearning:
         # initial_coord = torch.tensor([91283, 437631])
         index_initial = random_idx_pool[0]
         for index in random_idx_pool[1:]:
-            distance_cost = self.compute_distances(coordinates, index_initial, cost_factor)
+            distance_cost = self.compute_distances(coordinates, coordinates[index_initial], cost_factor)
             cost_total += distance_cost[index].item()/1000
             index_initial = index
         return random_idx_pool, cost_total
