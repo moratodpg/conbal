@@ -9,6 +9,7 @@ class ActiveLearning:
         self.budget_total = budget_total
         self.strategy_map = {
             "random": self.get_random_points,
+            "random_budget": self.select_random_budget,
             "mutual_info": self.select_mutual_info,
             "mi_adapt_threshold": self.select_mi_adapt_threshold,
             "mi_cost": self.select_mi_cost,
@@ -79,6 +80,42 @@ class ActiveLearning:
             cost_total += distance_cost[index].item()/1000
             index_initial = index
         return random_idx_pool, cost_total
+    
+    def select_random_budget(self, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
+        cost_total = 0        
+        # initial_coord = torch.tensor([91283, 437631])
+        # distance_cost = self.compute_distances(coordinates[idx_pool], initial_coord, cost_factor)
+        budget_points = self.num_active_points - 1
+        budget = self.budget_total
+        random_idx = np.random.choice(idx_pool, 1, replace=False)
+        selected_ind = random_idx.tolist()
+        # cost_total += distance_cost[selected_ind[-1]].item()/1000
+
+        for _ in range(self.num_active_points - 1):
+            # Masking out points beyond adaptive threshold
+            idx_pool = np.setdiff1d(idx_pool, selected_ind)
+            distance_cost = self.compute_distances(coordinates[idx_pool], coordinates[selected_ind[-1]], cost_factor)
+            budget_threshold = budget / (budget_points)
+            distance_cost_mask = distance_cost/1000 < budget_threshold
+            possible_indices = idx_pool[distance_cost_mask]
+            if len(possible_indices) == 0:
+                # Check if all points exceed the total budget
+                total_budget_mask = distance_cost/1000 < budget
+                possible_indices = idx_pool[total_budget_mask]
+                if len(possible_indices) == 0:
+                    return selected_ind, cost_total
+                random_idx = np.random.choice(possible_indices, 1, replace=False)
+            else:
+                random_idx = np.random.choice(possible_indices, 1, replace=False)
+            
+            point_cost = self.compute_distances(coordinates[random_idx], coordinates[selected_ind[-1]], cost_factor).unsqueeze(0)[0]
+            cost_total += point_cost.item()/1000 # Not correct
+            budget -= point_cost.item()/1000 # Not correct
+            budget_points -= 1
+            selected_ind.append(random_idx.item())
+        # Last point (return cost)
+        # cost_total += self.compute_distances(coordinates[idx_pool[selected_ind[-1]]].unsqueeze(0), initial_coord, cost_factor).item()/1000
+        return selected_ind, cost_total
     
     def select_mutual_info(self, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
         cost_total = 0
