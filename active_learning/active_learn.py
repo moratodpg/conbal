@@ -318,11 +318,18 @@ class ActiveLearning:
     
     def select_mi_ip_costarea(self, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
         cost_total = 0
+        budget = self.budget_total
         areacost = cost_factor[idx_pool]
+
         predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
         entropy = self.predictive_entropy(predicts)
         entropy_sum = self.expected_conditional_entropy(predicts)
         mutual_info = entropy - entropy_sum
+
+        if sum(areacost < budget) < 1:
+            selected_idx_pool = []
+            print("No budget available for selection")
+            return selected_idx_pool, cost_total
 
         mi_values_np = mutual_info.numpy()
         areacosts_np = areacost.numpy()
@@ -330,7 +337,6 @@ class ActiveLearning:
         prob = pulp.LpProblem("Maximize_Mutual_Information", pulp.LpMaximize)
 
         size_variables = len(mutual_info)
-        budget = self.budget_total
 
         # Define decision variables
         x = pulp.LpVariable.dicts("x", range(size_variables), cat='Binary')
