@@ -115,7 +115,11 @@ def training_loop(config=None):
 
             trainer.model.load_state_dict(trainer.best_model)
 
-            selected_idx_pool, cost = active_learn.get_points(mode, trainer.model, num_forwards, buildings_dataset, idx_pool, coordinates)
+            if mode == "mi_ip_costarea":
+                costfactor = torch.load("datasets/" + "build_6k_areacost" + ".pth")["cost_tensor"]
+            else:
+                costfactor = 1
+            selected_idx_pool, cost = active_learn.get_points(mode, trainer.model, num_forwards, buildings_dataset, idx_pool, coordinates, costfactor)
             score_AL["cost"].append(cost)
             wandb.log({"cost_accum": cost})
             cost_total += cost
