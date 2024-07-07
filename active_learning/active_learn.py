@@ -318,13 +318,14 @@ class ActiveLearning:
     
     def select_mi_ip_costarea(self, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
         cost_total = 0
+        areacost = cost_factor[idx_pool]
         predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
         entropy = self.predictive_entropy(predicts)
         entropy_sum = self.expected_conditional_entropy(predicts)
         mutual_info = entropy - entropy_sum
 
         mi_values_np = mutual_info.numpy()
-        areacosts_np = cost_factor.numpy()
+        areacosts_np = areacost.numpy()
 
         prob = pulp.LpProblem("Maximize_Mutual_Information", pulp.LpMaximize)
 
@@ -343,7 +344,7 @@ class ActiveLearning:
         solver_status = prob.solve(pulp.PULP_CBC_CMD(msg=False))
 
         selected_ind = [i for i in range(size_variables) if pulp.value(x[i]) == 1]
-        cost_total += sum(cost_factor[i] for i in selected_ind).item()
+        cost_total += sum(areacost[i] for i in selected_ind).item()
 
         # From the selected indices, get the indices from the pool
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
