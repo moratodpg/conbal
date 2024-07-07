@@ -4,6 +4,7 @@ import json
 import pprint
 import argparse
 import random
+import importlib
 
 import numpy as np
 import torch
@@ -45,6 +46,7 @@ def training_loop(config=None):
         number_active_points = config.active_points
         num_active_iter = config.active_iterations
         budget_total = config.budget_total
+        al_mode = config.al_mode
         mode = config.mode 
         save_interval = config.save_interval
 
@@ -55,6 +57,7 @@ def training_loop(config=None):
         num_classes = buildings_dataset.output_tensor.max().item() + 1
         # Load coordinates
         coordinates = torch.load("datasets/" + dataset_file + "_coord.pth")
+        cost_area = torch.load("datasets/" + dataset_file + "_areacost.pth")["cost_tensor"]
         ### Load the indices
         with open("datasets/" + dataset_file + "_indices_0.json", 'r') as f:
             subset_build = json.load(f)
@@ -83,7 +86,11 @@ def training_loop(config=None):
         # pool_ds_0 = pool_ds
 
         test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
-        active_learn = ActiveLearning(num_active_points=number_active_points, budget_total = budget_total)
+
+        # Instantiate the active learning class
+        key_al_module = "active_learning." + mode
+        al_class = getattr(importlib.import_module(key_al_module), al_mode)
+        active_learn = al_class(number_active_points, budget_total, coordinates, cost_area)
 
         # Create dictionary with two keys: "accuracy_test" and "cost"
         score_AL = {"accuracy_test": [], "cost": [], "idx_train": [], "idx_pool": [], "idx_test": []}
@@ -114,12 +121,8 @@ def training_loop(config=None):
             idx_train = train_ds.indices
 
             trainer.model.load_state_dict(trainer.best_model)
-
-            if mode == "mi_ip_costarea":
-                costfactor = torch.load("datasets/" + "build_6k_areacost" + ".pth")["cost_tensor"]
-            else:
-                costfactor = 1
-            selected_idx_pool, cost = active_learn.get_points(mode, trainer.model, num_forwards, buildings_dataset, idx_pool, coordinates, costfactor)
+                
+            selected_idx_pool, cost = active_learn.get_points(trainer.model, num_forwards, buildings_dataset, idx_pool)
             score_AL["cost"].append(cost)
             wandb.log({"cost_accum": cost})
             cost_total += cost

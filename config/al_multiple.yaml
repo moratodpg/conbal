@@ -17,11 +17,13 @@ parameters:
   dataset:
     value: build_6k
   mode:
-    value: mutual_info
+    value: ip_costarea
+  al_mode:
+    value: Ip_Costarea_MI
   active_points:
     value: 5
   budget_total:
-    value: 30
+    value: 101
   active_iterations:
     value: 200 # 1000 typically
   num_epochs:
