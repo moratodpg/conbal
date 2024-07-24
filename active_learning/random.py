@@ -73,3 +73,30 @@ class RandomBudgetReturn(ActiveLearning):
         cost_total += return_cost.item()/1000
 
         return selected_ind, cost_total
+    
+class RandomAreas(ActiveLearning):
+    def __init__(self, num_active_points, budget_total, coordinates, cost_area):
+        super().__init__(num_active_points, budget_total, coordinates, cost_area)
+        
+    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+        cost_total = 0
+        budget = self.budget_total 
+        selected_ind = []
+
+        for _ in range(self.num_active_points):
+            idx_pool = np.setdiff1d(idx_pool, selected_ind)
+
+            area_cost = self.cost_area[idx_pool]
+            area_cost_mask = area_cost < budget
+            possible_indices = idx_pool[area_cost_mask]
+
+            if len(possible_indices) == 0:
+                return selected_ind, cost_total
+            
+            random_idx = np.random.choice(possible_indices, 1, replace=False)
+            point_cost = self.cost_area[random_idx]
+            cost_total += point_cost.item()
+            budget -= point_cost.item()
+            selected_ind.append(random_idx.item())
+
+        return selected_ind, cost_total
