@@ -156,7 +156,8 @@ class MiAdaptThresholdReturn(ActiveLearning):
         # From the selected indices, get the indices from the pool
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
         return selected_idx_pool, cost_total
-    
+
+
 class MiAdaptThresholdArea(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
