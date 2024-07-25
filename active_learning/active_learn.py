@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import pulp 
 
 class ActiveLearning:
     def __init__(self, num_active_points, budget_total):
@@ -13,6 +14,7 @@ class ActiveLearning:
             "mutual_info": self.select_mutual_info,
             "mi_adapt_threshold": self.select_mi_adapt_threshold,
             "mi_adapt_thres_start": self.select_mi_adapt_thres_start,
+            "mi_ip_costarea": self.select_mi_ip_costarea,
             "mi_cost": self.select_mi_cost,
             "entropy": self.select_entropy,
             "var_ratio": self.select_var_ratio,
@@ -24,7 +26,7 @@ class ActiveLearning:
             return self.get_random_points(idx_pool, coordinates, cost_factor)
         else:
             strategy = self.strategy_map.get(mode, self.strategy_map["mutual_info"])
-            return strategy(net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1)
+            return strategy(net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor)
     
     ## Helper functions
     def predict(self, model, inputs, forward_passes):
@@ -309,6 +311,46 @@ class ActiveLearning:
         # Last point (return cost)
         return_cost = self.compute_distances(coordinates[idx_pool][selected_ind[-1]].unsqueeze(0), coord_start, cost_factor)[0]
         cost_total += return_cost.item()/1000
+
+        # From the selected indices, get the indices from the pool
+        selected_idx_pool = [idx_pool[i] for i in selected_ind]
+        return selected_idx_pool, cost_total
+    
+    def select_mi_ip_costarea(self, net_current, num_forwards, buildings_dataset, idx_pool, coordinates, cost_factor=1):
+        cost_total = 0
+        budget = self.budget_total
+        areacost = cost_factor[idx_pool]
+
+        predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
+        entropy = self.predictive_entropy(predicts)
+        entropy_sum = self.expected_conditional_entropy(predicts)
+        mutual_info = entropy - entropy_sum
+
+        if sum(areacost < budget) < 1:
+            selected_idx_pool = []
+            print("No budget available for selection")
+            return selected_idx_pool, cost_total
+
+        mi_values_np = mutual_info.numpy()
+        areacosts_np = areacost.numpy()
+
+        prob = pulp.LpProblem("Maximize_Mutual_Information", pulp.LpMaximize)
+
+        size_variables = len(mutual_info)
+
+        # Define decision variables
+        x = pulp.LpVariable.dicts("x", range(size_variables), cat='Binary')
+        # Objective function
+        prob += pulp.lpSum(mi_values_np[i] * x[i] for i in range(size_variables))
+        # Budget constraint
+        prob += pulp.lpSum(areacosts_np[i] * x[i] for i in range(size_variables)) <= budget
+        # At most 5 items constraint
+        prob += pulp.lpSum(x[i] for i in range(size_variables)) <= self.num_active_points
+        # Solve the problem with suppressed output
+        solver_status = prob.solve(pulp.PULP_CBC_CMD(msg=False))
+
+        selected_ind = [i for i in range(size_variables) if pulp.value(x[i]) == 1]
+        cost_total += sum(areacost[i] for i in selected_ind).item()
 
         # From the selected indices, get the indices from the pool
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
