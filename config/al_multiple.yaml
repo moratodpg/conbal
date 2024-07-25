@@ -17,15 +17,15 @@ parameters:
   dataset:
     value: build_6k
   mode:
-    value: ip_costarea
+    value: greedy
   al_mode:
-    value: Ip_Costarea_MI
+    value: MIGreedyReturn
   active_points:
     value: 5
   budget_total:
-    value: 101
+    value: 0.1
   active_iterations:
-    value: 200 # 1000 typically
+    value: 600 # 1000 typically
   num_epochs:
     value: 200
   num_forwards:
