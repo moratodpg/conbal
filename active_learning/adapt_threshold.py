@@ -6,7 +6,7 @@ import numpy as np
 
 from active_learning.active_learning import ActiveLearning
 
-class MiAdaptThreshold(ActiveLearning):
+class MIAdaptThreshold(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
@@ -76,7 +76,7 @@ class MiAdaptThreshold(ActiveLearning):
         return selected_idx_pool, cost_total
     
     
-class MiAdaptThresholdReturn(ActiveLearning):
+class MIAdaptThresholdReturn(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
@@ -158,7 +158,7 @@ class MiAdaptThresholdReturn(ActiveLearning):
         return selected_idx_pool, cost_total
 
 
-class MiAdaptThresholdArea(ActiveLearning):
+class MIAdaptThresholdArea(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         

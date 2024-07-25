@@ -6,7 +6,7 @@ import numpy as np
 
 from active_learning.active_learning import ActiveLearning
     
-class MiGreedy(ActiveLearning):
+class MIGreedy(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
@@ -64,7 +64,7 @@ class MiGreedy(ActiveLearning):
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
         return selected_idx_pool, cost_total
 
-class MiGreedyReturn(ActiveLearning):
+class MIGreedyReturn(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
@@ -132,7 +132,7 @@ class MiGreedyReturn(ActiveLearning):
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
         return selected_idx_pool, cost_total
 
-class MiGreedyArea(ActiveLearning):
+class MIGreedyArea(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
