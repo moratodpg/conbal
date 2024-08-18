@@ -1,5 +1,6 @@
 # Results
 results/
+notebooks/
 
 # Logs wandb
 wandb/
@@ -9,6 +10,8 @@ tuning/
 
 # Environment
 env/
+
+datasets/*.json
 
 # torch files
 *.pth 
