@@ -35,7 +35,7 @@ def set_seed(seed):
 
 def training_loop(config=None, use_wandb=False, custom_name=None):
     if use_wandb and wandb_available:
-        run = wandb.init(config=config, mode="online", name=custom_name)  # Initialize W&B for every run
+        run = wandb.init(project="test_al", config=config, name=custom_name, reinit=True)
         config = wandb.config
 
     seed = int(config["seed"])
@@ -182,35 +182,5 @@ if __name__ == "__main__":
     custom_name = args.filename
     pprint.pprint(config)
 
-    if args.use_wandb and wandb_available:
-        wandb.login()
-        sweep_config = {
-        "method": "random",  # Can be 'random', 'grid', or 'bayes'
-        "metric": {
-            "name": "score",
-            "goal": "maximize"
-        },
-        "parameters": {
-            "dropout": {"value": config["dropout"]},
-            "learning_rate": {"value": config["learning_rate"]},
-            "hidden_size": {"value": config["hidden_size"]},
-            "layers": {"value": config["layers"]},
-            "weight_decay": {"value": config["weight_decay"]},
-            "dataset": {"value": config["dataset"]},
-            "mode": {"value": config["mode"]},
-            "al_mode": {"value": config["al_mode"]},
-            "active_points": {"value": config["active_points"]},
-            "budget_total": {"value": config["budget_total"]},
-            "active_iterations": {"value": config["active_iterations"]},
-            "num_epochs": {"value": config["num_epochs"]},
-            "num_forwards": {"value": config["num_forwards"]},
-            "batch_size": {"value": config["batch_size"]},
-            "save_interval": {"value": config["save_interval"]},
-            "seed": {"value": config["seed"]},
-        }
-        }
-        sweep_id = wandb.sweep(sweep_config, project="tests_AL")
-        wandb.agent(sweep_id, function=lambda: training_loop(config=config, use_wandb=args.use_wandb, custom_name=custom_name), count=1)
-    else:
-        training_loop(config=config, use_wandb=args.use_wandb, custom_name=custom_name)
+    training_loop(config=config, use_wandb=args.use_wandb, custom_name=custom_name)
 
