@@ -176,6 +176,11 @@ class MIAdaptThresholdArea(ActiveLearning):
         area_cost = self.cost_area[idx_pool]
         area_cost_mask = area_cost > budget_threshold
         mutual_info[area_cost_mask] = 0
+
+        if mutual_info.sum() == 0:
+            mutual_info = entropy - entropy_sum
+            area_cost_mask = area_cost > budget
+            mutual_info[area_cost_mask] = 0
         
         _, mi_indices = mutual_info.topk(1)
         selected_ind = mi_indices.tolist()
