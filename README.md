@@ -46,11 +46,11 @@ Parameters:
 ```
 
 ## Results
-Results will be saved in the `results/` folder. Each subfolder here corresponds to an experiment set: dataset_configuration (e.g. build6k_distance => dataset build6k, configuration distance).
+Results will be saved in the `results/` folder. Each subfolder here corresponds to an experiment set: dataset_configuration (e.g. build6k_distance => dataset "build6k", configuration "distance").
 
-Inside each experiment set, directories are named based on the strategy_budget_seed_date. For instance, greedy_01_1_2024_07_25_16_32_00 corresponds to constrained greedy batch-BAL under 100 m batch constraint, seed 1, and experiment date.
+Inside each experiment set, directories are named based on the strategy_budget_seed_date. For instance, greedy_01_1_2024_07_25_16_32_00 corresponds to greedy ConBatch-BAL under 100 m batch constraint, seed 1, and experiment date.
 
-Within each specific experiment, a yaml config file is included with all parameters needed to run again the experiment and an json output file that contains the results. 
+Within each specific experiment folder, a yaml config file is included with all parameters needed to run again the experiment and an json output file that contains the results. 
 
 The json output file contains a dictionary categorized by the following keys and values:
 - `accuracy_test`: accuracy achieved on the test set over active learning iterations.
@@ -65,23 +65,22 @@ The json output file contains a dictionary categorized by the following keys and
 
 You can manually download the datasets and stored experiments via the following anonymous link: 
 
-[https://zenodo.org/records/13839235?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImVkOTJhOTAxLWQ2NTAtNGZiYy05ZmFiLWFlYTBjOWRiZTU1YyIsImRhdGEiOnt9LCJyYW5kb20iOiI3ZDhiNzI1MTBmMTlmZmI4NTEwNDA4YWNiYjljMWI2ZSJ9.82fnsTZRRD1SRzcdMKlMQ7WrLexUUeaitZkDf5H0zKte1YMP7rx4rQ8UH_j6niXBtlNW4w6g2qCKkA27yiz2Lg](https://zenodo.org/records/13839235?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImVkOTJhOTAxLWQ2NTAtNGZiYy05ZmFiLWFlYTBjOWRiZTU1YyIsImRhdGEiOnt9LCJyYW5kb20iOiI3ZDhiNzI1MTBmMTlmZmI4NTEwNDA4YWNiYjljMWI2ZSJ9.82fnsTZRRD1SRzcdMKlMQ7WrLexUUeaitZkDf5H0zKte1YMP7rx4rQ8UH_j6niXBtlNW4w6g2qCKkA27yiz2Lg)
+[https://zenodo.org/records/13861426?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImMwN2UxNDI1LTBmODgtNGI3Mi1hODVlLTcyODU0ZjU3YTQzNyIsImRhdGEiOnt9LCJyYW5kb20iOiI2ZGY5YTYxMWZiY2JjZmQ5YWQwNDhiOTllNmMyNDNhYyJ9.WW9C9tF0HN2157PYh5w_dH4a3cElrhT9zhrBKdU4Gkz-JvtbXmrQWhmVibk8VBWC7muK3fTm13--gXAOqK2hKw](https://zenodo.org/records/13861426?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImMwN2UxNDI1LTBmODgtNGI3Mi1hODVlLTcyODU0ZjU3YTQzNyIsImRhdGEiOnt9LCJyYW5kb20iOiI2ZGY5YTYxMWZiY2JjZmQ5YWQwNDhiOTllNmMyNDNhYyJ9.WW9C9tF0HN2157PYh5w_dH4a3cElrhT9zhrBKdU4Gkz-JvtbXmrQWhmVibk8VBWC7muK3fTm13--gXAOqK2hKw)
 
-Or, alternatively, you can download it through wget:
 
-2. Add the dataset(s) 
+2. Include the dataset(s) to the code
 
-Include the dataset torch files contained in the folder `constrained_batchBAL_datasets/benchmark_torch_files` to the directory [datasets/](datasets/).
+Include the dataset torch files contained in the folder `benchmark_torch_files` to the directory [datasets/](datasets/).
 
-3. Add the config file(s) corresponding to the experiment(s) you would like to reproduce
+3. Include the config file(s) corresponding to the experiment(s) you would like to reproduce to the code
 
-Include the input config files associated with the experiments you would like to reproduce. All results are included in the folder `constrained_batchBAL_datasets/benchmark_results`. Add the specific config file(s) to the directory [config/](config/). Feel free to modify the name of the config files to avoid duplicates.
+Include the input config files associated with the experiments you would like to reproduce. All results are included in the folder `benchmark_results`. Add the specific config file(s) to the directory [config/](config/). Feel free to modify the name of the config files to avoid duplicates.
 
-> Please note that the config file already contains the random seed used for the experiment.
+> The config file already contains the random seed set for the experiment.
 
 4. Run the experiment(s) 
 
-Following the instructions described in the [Usage](#usage) section.
+Follow the instructions described in the [Usage](#usage) section.
 
 Example:
 
@@ -91,7 +90,7 @@ python main.py config custom_name
 
 5. Check the results
 
-The json file containing the results will be stored in the folder [results/json/](results/json). Note this folder will be automatically created once you start running the experiment(s).
+The json file containing the results will be stored in the folder [results/json/](results/json). This folder will be automatically created once you start running the experiment(s).
 
 ## License
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
