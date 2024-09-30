@@ -6,7 +6,7 @@ This repository contains the code for running **active learning** experiments un
 In ConBatch-BAL, you can:
 
 - Reproduce the results presented in the paper.
-- Test ConBatch BAL strategies on a the available real-world building datasets or a dataset of your choice.
+- Test ConBatch-BAL strategies on a the available real-world building datasets or a dataset of your choice.
 - Develop a new active learning strategy and test it against ConBatch BAL strategies or the implemented random selection baseline.
 
 ## Installation
