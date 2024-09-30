@@ -41,6 +41,7 @@ Parameters:
 ├── config/                 # Input configuration files
 ├── active_learning/        # Acquisition functions
 ├── results/                # Output results and logs
+├── compute_embeddings/     # *Additional* helper code to compute image embeddings
 ├── LICENSE                 # License
 └── README.md               # This file!
 ```
