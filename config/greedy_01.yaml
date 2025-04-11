@@ -12,5 +12,8 @@ mode: greedy # module block
 num_epochs: 200
 num_forwards: 100
 save_interval: 50
+wandb_entity: "imp_marl"
+wandb_project: "tests_al_"
+wandb_mode: "online"
 weight_decay: 0.0001
 seed: None
