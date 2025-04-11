@@ -46,10 +46,6 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
             mode=wandb_mode,
         )
         config = wandb.config
-    
-    # if use_wandb and wandb_available:
-    #     run = wandb.init(project="test_al", config=config, name=custom_name, reinit=True)
-    #     config = wandb.config
 
     seed = int(config["seed"])
     set_seed(seed)
@@ -133,8 +129,6 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
 
         trainer.train()
         score_AL["accuracy_test"].append(trainer.score)
-        if use_wandb and wandb_available:
-            wandb.log({"score": trainer.score})
 
         ## Loop
         idx_pool = pool_ds.indices
@@ -144,9 +138,13 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
             
         selected_idx_pool, cost = active_learn.get_points(trainer.model, num_forwards, buildings_dataset, idx_pool)
         score_AL["cost"].append(cost)
-        if use_wandb and wandb_available:
-            wandb.log({"cost_accum": cost})
         cost_total += cost
+
+        if use_wandb and wandb_available:
+            wandb.log({
+            "score": trainer.score,
+            "cost_accum": cost,
+            }, step=i)
         
         ## Updated indices based on selected samples
         idx_pool_ = [idx for idx in idx_pool if idx not in selected_idx_pool]
