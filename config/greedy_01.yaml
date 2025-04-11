@@ -1,6 +1,6 @@
 active_iterations: 800
 active_points: 5
-al_mode: MIGreedy
+al_mode: MIGreedy # class
 batch_size: 32
 budget_total: 0.1
 dataset: build_6k
@@ -8,7 +8,7 @@ dropout: 0.1
 hidden_size: 256
 layers: 2
 learning_rate: 0.0001
-mode: greedy
+mode: greedy # module block
 num_epochs: 200
 num_forwards: 100
 save_interval: 50
