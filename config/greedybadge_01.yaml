@@ -1,6 +1,6 @@
 active_iterations: 800
 active_points: 5
-al_mode: MIGreedy # class
+al_mode: Greedy_Badge # class
 batch_size: 32
 budget_total: 0.1
 dataset: build_6k
