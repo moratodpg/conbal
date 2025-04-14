@@ -300,3 +300,59 @@ class Greedy_Badge(ActiveLearning):
         # shape => [N, (output_dim * width + output_dim)]
 
         return grad_last_layer.detach()
+    
+class Greedy_Coreset(ActiveLearning):
+    def __init__(self, num_active_points, budget_total, coordinates, cost_area):
+        super().__init__(num_active_points, budget_total, coordinates, cost_area)
+        
+    def get_points(self, net_current, _, buildings_dataset, idx_pool, idx_train):
+        cost_total = 0
+        cost_factor = 1
+
+        input_labeled = buildings_dataset.input_tensor[idx_train]
+        input_unlabeled = buildings_dataset.input_tensor[idx_pool]
+        net_current.eval()
+        with torch.no_grad():
+            emb_labeled = net_current.block[:-1](input_labeled)
+            emb_unlabeled = net_current.block[:-1](input_unlabeled)
+        net_current.train()
+
+        dists = torch.cdist(emb_unlabeled, emb_labeled, p=2)
+        min_dist, _ = dists.min(dim=1)
+        
+        # Choose the first sample randomly
+        _, first_idx = min_dist.topk(1)        
+        selected_ind = [first_idx.item()]
+
+        budget = self.budget_total 
+
+        for _ in range(self.num_active_points - 1):
+            
+            # add the selected point to the labeled set
+            emb_labeled = torch.cat([emb_labeled, emb_unlabeled[selected_ind[-1]].unsqueeze(0)], dim=0)
+            dists = torch.cdist(emb_unlabeled, emb_labeled, p=2)
+            min_dist, _ = dists.min(dim=1)
+
+            # Masking out points beyond adaptive threshold
+            distance_cost = self.compute_distances(self.coordinates[idx_pool], self.coordinates[idx_pool[center_indices[-1]]], cost_factor)
+            distance_cost_mask = distance_cost/1000 > budget
+
+            min_dist[distance_cost_mask] = 0
+            min_dist[selected_ind] = 0
+
+            if min_dist.sum() == 0:
+                selected_idx_pool = [idx_pool[i] for i in selected_ind]
+                return selected_idx_pool, cost_total
+
+            # Select the next batch active point
+            _, sel_idx = min_dist.topk(1)        
+            selected_ind = [sel_idx.item()]
+
+            selected_ind.append(sel_idx.item())
+
+            cost_total += distance_cost[selected_ind[-1]].item()/1000
+            budget -= distance_cost[selected_ind[-1]].item()/1000
+
+        # From the selected indices, get the indices from the pool
+        selected_idx_pool = [idx_pool[i] for i in selected_ind]
+        return selected_idx_pool, cost_total
