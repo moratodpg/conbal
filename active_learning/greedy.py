@@ -334,7 +334,7 @@ class Greedy_Coreset(ActiveLearning):
             min_dist, _ = dists.min(dim=1)
 
             # Masking out points beyond adaptive threshold
-            distance_cost = self.compute_distances(self.coordinates[idx_pool], self.coordinates[idx_pool[center_indices[-1]]], cost_factor)
+            distance_cost = self.compute_distances(self.coordinates[idx_pool], self.coordinates[idx_pool[selected_ind[-1]]], cost_factor)
             distance_cost_mask = distance_cost/1000 > budget
 
             min_dist[distance_cost_mask] = 0

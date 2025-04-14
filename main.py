@@ -136,7 +136,7 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
 
         trainer.model.load_state_dict(trainer.best_model)
             
-        selected_idx_pool, cost = active_learn.get_points(trainer.model, num_forwards, buildings_dataset, idx_pool)
+        selected_idx_pool, cost = active_learn.get_points(trainer.model, num_forwards, buildings_dataset, idx_pool, idx_train)
         score_AL["cost"].append(cost)
         cost_total += cost
 
