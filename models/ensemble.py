@@ -38,7 +38,7 @@ class Trainer_Ensemble:
         self.score = 0
         self.best_val_score = float('-inf')
         self.epochs_without_improvement = 0
-        self.best_model = None * len(self.models)
+        self.best_model = [copy.deepcopy(net.state_dict()) for net in self.model]
 
     def train(self):
         for epoch in range(self.num_epochs):
@@ -52,7 +52,7 @@ class Trainer_Ensemble:
                     # print(loss.item())
                     loss.backward()
                     self.optimizer[i].step()
-                    running_loss += loss.item()
+                    running_loss += loss.item()/len(self.model)
 
             # Evaluate the model on the test set to calculate validation loss
             val_score = self.evaluate()
@@ -125,7 +125,7 @@ class Trainer_Ensemble:
 
     def test(self):
         for i, net in enumerate(self.model):
-            net.load_state_dict(self.best_models_state[i])
+            net.load_state_dict(self.best_model[i])
         [net.eval() for net in self.model] 
         scores = self.compute_scores()
         self.score = scores["accuracy"]
@@ -134,3 +134,16 @@ class Trainer_Ensemble:
         print(f"Average Precision on the test set: {scores['avg_precision']}")
         print(f"Average Recall on the test set: {scores['avg_recall']}")
         print(f"Average F1 Score on the test set: {scores['avg_f1_score']}")
+    
+    def predict(self, inputs):
+        iterations = len(self.model)
+        predictions = []
+        with torch.no_grad():
+            for i in range(iterations):
+                self.model[i].load_state_dict(self.best_model[i])
+                self.model[i].eval()
+                outputs = self.model[i](inputs)
+                predicted = F.softmax(outputs, dim=1)
+                predictions.append(predicted)
+        predicts = torch.stack(predictions, dim=1)
+        return predicts
