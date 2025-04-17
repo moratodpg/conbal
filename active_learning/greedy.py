@@ -10,7 +10,7 @@ class MIGreedy(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
-    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool, idx_train):
         cost_total = 0
         cost_factor = 1
         predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
@@ -68,7 +68,7 @@ class MIGreedyReturn(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
-    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool, idx_train):
         cost_total = 0
         cost_factor = 1
         predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
@@ -136,7 +136,7 @@ class MIGreedyArea(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
-    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool, idx_train):
         cost_total = 0
         predicts = self.predict(net_current, buildings_dataset.input_tensor[idx_pool], num_forwards)
         entropy = self.predictive_entropy(predicts)
@@ -200,7 +200,7 @@ class Greedy_Badge(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
-    def get_points(self, net_current, _, buildings_dataset, idx_pool):
+    def get_points(self, net_current, _, buildings_dataset, idx_pool, idx_train):
         cost_total = 0
         cost_factor = 1
 
@@ -300,3 +300,175 @@ class Greedy_Badge(ActiveLearning):
         # shape => [N, (output_dim * width + output_dim)]
 
         return grad_last_layer.detach()
+    
+class Greedy_Coreset(ActiveLearning):
+    def __init__(self, num_active_points, budget_total, coordinates, cost_area):
+        super().__init__(num_active_points, budget_total, coordinates, cost_area)
+        
+    def get_points(self, net_current, _, buildings_dataset, idx_pool, idx_train):
+        cost_total = 0
+        cost_factor = 1
+
+        input_labeled = buildings_dataset.input_tensor[idx_train]
+        input_unlabeled = buildings_dataset.input_tensor[idx_pool]
+        net_current.eval()
+        with torch.no_grad():
+            emb_labeled = net_current.block[:-1](input_labeled)
+            emb_unlabeled = net_current.block[:-1](input_unlabeled)
+        net_current.train()
+
+        dists = torch.cdist(emb_unlabeled, emb_labeled, p=2)
+        min_dist, _ = dists.min(dim=1)
+        
+        # Choose the first sample randomly
+        _, first_idx = min_dist.topk(1)        
+        selected_ind = [first_idx.item()]
+
+        budget = self.budget_total 
+
+        for _ in range(self.num_active_points - 1):
+            
+            # add the selected point to the labeled set
+            emb_labeled = torch.cat([emb_labeled, emb_unlabeled[selected_ind[-1]].unsqueeze(0)], dim=0)
+            dists = torch.cdist(emb_unlabeled, emb_labeled, p=2)
+            min_dist, _ = dists.min(dim=1)
+
+            # Masking out points beyond adaptive threshold
+            distance_cost = self.compute_distances(self.coordinates[idx_pool], self.coordinates[idx_pool[selected_ind[-1]]], cost_factor)
+            distance_cost_mask = distance_cost/1000 > budget
+
+            min_dist[distance_cost_mask] = 0
+            min_dist[selected_ind] = 0
+
+            if min_dist.sum() == 0:
+                selected_idx_pool = [idx_pool[i] for i in selected_ind]
+                return selected_idx_pool, cost_total
+
+            # Select the next batch active point
+            _, sel_idx = min_dist.topk(1)        
+            selected_ind = [sel_idx.item()]
+
+            selected_ind.append(sel_idx.item())
+
+            cost_total += distance_cost[selected_ind[-1]].item()/1000
+            budget -= distance_cost[selected_ind[-1]].item()/1000
+
+        # From the selected indices, get the indices from the pool
+        selected_idx_pool = [idx_pool[i] for i in selected_ind]
+        return selected_idx_pool, cost_total
+    
+class MI_MCMC_Greedy(ActiveLearning):
+    def __init__(self, num_active_points, budget_total, coordinates, cost_area):
+        super().__init__(num_active_points, budget_total, coordinates, cost_area)
+        
+    def get_points(self, trainer_mcmc, buildings_dataset, idx_pool, n_samples=100):
+        cost_total = 0
+        cost_factor = 1
+        predicts = trainer_mcmc.predict_posterior_samples(buildings_dataset.input_tensor[idx_pool])
+        entropy = self.predictive_entropy(predicts)
+        entropy_sum = self.expected_conditional_entropy(predicts)
+        mutual_info = entropy - entropy_sum
+
+        budget = self.budget_total 
+        
+        _, mi_indices = mutual_info.topk(1)
+        selected_ind = mi_indices.tolist()
+
+        # Evaluate the first point and store it
+        selected_predicts = predicts[selected_ind[-1]].unsqueeze(0)
+        stored_predicts = selected_predicts.clone()
+
+        for _ in range(self.num_active_points - 1):
+            # Compute mutual information
+            joint_cond_entropy = entropy_sum + entropy_sum[selected_ind].sum()
+            # [samples, num_classes^n-1, num_classes] = [1, num_classes, num_forwards] x [samples, num_forwards, num_classes]
+            joint_per_sample = torch.einsum('ijk , bkc -> bjc' , selected_predicts.transpose(1,2) , predicts)
+            joint_per_sample = joint_per_sample.reshape(-1, joint_per_sample.shape[1]*joint_per_sample.shape[2])/n_samples
+            eps = 1e-9
+            joint_entropy_clamped = torch.clamp(joint_per_sample, min=eps)
+            joint_predictive_entropy = -torch.sum(joint_entropy_clamped * torch.log2(joint_entropy_clamped), dim=1)
+            joint_mutual_info = joint_predictive_entropy - joint_cond_entropy
+
+            # Masking out points beyond adaptive threshold
+            distance_cost = self.compute_distances(self.coordinates[idx_pool], self.coordinates[idx_pool[selected_ind[-1]]], cost_factor)
+            distance_cost_mask = distance_cost/1000 > budget
+
+            joint_mutual_info[distance_cost_mask] = 0
+            joint_mutual_info[selected_ind] = 0
+
+            if joint_mutual_info.sum() == 0:
+                selected_idx_pool = [idx_pool[i] for i in selected_ind]
+                return selected_idx_pool, cost_total
+
+            # Select the next batch active point
+            _, mi_indices = joint_mutual_info.topk(1)
+            selected_ind.append(mi_indices.item())
+            cost_total += distance_cost[selected_ind[-1]].item()/1000
+            budget -= distance_cost[selected_ind[-1]].item()/1000
+
+            # Store the selected point
+            selected_predicts = predicts[selected_ind[-1]]
+            selected_predicts = torch.einsum('ik,il->ikl', selected_predicts, stored_predicts.squeeze(0)).reshape(n_samples, -1).unsqueeze(0)
+            stored_predicts = selected_predicts.clone()
+
+        # From the selected indices, get the indices from the pool
+        selected_idx_pool = [idx_pool[i] for i in selected_ind]
+        return selected_idx_pool, cost_total
+
+class MI_ensemble_Greedy(ActiveLearning):
+    def __init__(self, num_active_points, budget_total, coordinates, cost_area):
+        super().__init__(num_active_points, budget_total, coordinates, cost_area)
+        
+    def get_points(self, trainer_ensemble, buildings_dataset, idx_pool, n_ensembles):
+        cost_total = 0
+        cost_factor = 1
+        predicts = trainer_ensemble.predict(buildings_dataset.input_tensor[idx_pool])
+        entropy = self.predictive_entropy(predicts)
+        entropy_sum = self.expected_conditional_entropy(predicts)
+        mutual_info = entropy - entropy_sum
+
+        budget = self.budget_total 
+        
+        _, mi_indices = mutual_info.topk(1)
+        selected_ind = mi_indices.tolist()
+
+        # Evaluate the first point and store it
+        selected_predicts = predicts[selected_ind[-1]].unsqueeze(0)
+        stored_predicts = selected_predicts.clone()
+
+        for _ in range(self.num_active_points - 1):
+            # Compute mutual information
+            joint_cond_entropy = entropy_sum + entropy_sum[selected_ind].sum()
+            # [samples, num_classes^n-1, num_classes] = [1, num_classes, num_forwards] x [samples, num_forwards, num_classes]
+            joint_per_sample = torch.einsum('ijk , bkc -> bjc' , selected_predicts.transpose(1,2) , predicts)
+            joint_per_sample = joint_per_sample.reshape(-1, joint_per_sample.shape[1]*joint_per_sample.shape[2])/n_ensembles
+            eps = 1e-9
+            joint_entropy_clamped = torch.clamp(joint_per_sample, min=eps)
+            joint_predictive_entropy = -torch.sum(joint_entropy_clamped * torch.log2(joint_entropy_clamped), dim=1)
+            joint_mutual_info = joint_predictive_entropy - joint_cond_entropy
+
+            # Masking out points beyond adaptive threshold
+            distance_cost = self.compute_distances(self.coordinates[idx_pool], self.coordinates[idx_pool[selected_ind[-1]]], cost_factor)
+            distance_cost_mask = distance_cost/1000 > budget
+
+            joint_mutual_info[distance_cost_mask] = 0
+            joint_mutual_info[selected_ind] = 0
+
+            if joint_mutual_info.sum() == 0:
+                selected_idx_pool = [idx_pool[i] for i in selected_ind]
+                return selected_idx_pool, cost_total
+
+            # Select the next batch active point
+            _, mi_indices = joint_mutual_info.topk(1)
+            selected_ind.append(mi_indices.item())
+            cost_total += distance_cost[selected_ind[-1]].item()/1000
+            budget -= distance_cost[selected_ind[-1]].item()/1000
+
+            # Store the selected point
+            selected_predicts = predicts[selected_ind[-1]]
+            selected_predicts = torch.einsum('ik,il->ikl', selected_predicts, stored_predicts.squeeze(0)).reshape(n_ensembles, -1).unsqueeze(0)
+            stored_predicts = selected_predicts.clone()
+
+        # From the selected indices, get the indices from the pool
+        selected_idx_pool = [idx_pool[i] for i in selected_ind]
+        return selected_idx_pool, cost_total

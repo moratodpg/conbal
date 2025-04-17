@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 # import wandb
 import yaml
 
-from models.dnn import Trainer, MLP_dropout
+from models.ensemble import Trainer_Ensemble, MLP_dropout
 from datasets.buildings_dataset import Buildings
 # from active_learning.active_learn import ActiveLearning
 
@@ -56,7 +56,7 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
     w_decay = config["weight_decay"]
     hidden_size = config["hidden_size"]
     layers = config["layers"]
-    num_forwards = config["num_forwards"]
+    num_ensembles = config["num_ensembles"]
     dropout_rate = config["dropout"]
     number_active_points = config["active_points"]
     num_active_iter = config["active_iterations"]
@@ -122,10 +122,10 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
 
         # Instantiate the classifier
         input_size = 384 # Only considering aerial images
-        net = MLP_dropout(input_size, hidden_size, layers, num_classes, dropout_rate)
+        net = [MLP_dropout(input_size, hidden_size, layers, num_classes, dropout_rate) for _ in range(num_ensembles)]
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=w_decay)
-        trainer = Trainer(net, num_classes, train_loader, test_loader, criterion, optimizer, num_epochs, patience=400)
+        optimizer = [optim.Adam(net.parameters(), lr=learning_rate, weight_decay=w_decay) for net in net]
+        trainer = Trainer_Ensemble(net, num_classes, train_loader, test_loader, criterion, optimizer, num_epochs, patience=400)
 
         trainer.train()
         score_AL["accuracy_test"].append(trainer.score)
@@ -133,10 +133,8 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
         ## Loop
         idx_pool = pool_ds.indices
         idx_train = train_ds.indices
-
-        trainer.model.load_state_dict(trainer.best_model)
             
-        selected_idx_pool, cost = active_learn.get_points(trainer.model, num_forwards, buildings_dataset, idx_pool, idx_train)
+        selected_idx_pool, cost = active_learn.get_points(trainer, buildings_dataset, idx_pool, n_ensembles=num_ensembles)
         score_AL["cost"].append(cost)
         cost_total += cost
 
@@ -158,7 +156,7 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
 
         if i % save_interval == 0:
             model_filename = os.path.join(results_dir[0], f"net_{i}.pth")
-            torch.save(trainer.model.state_dict(), model_filename)
+            torch.save(trainer.best_model, model_filename)
             print(f"Model saved: {model_filename}")
             model_filename = os.path.join(results_dir[1], "output.json")
             with open(model_filename, 'w') as f:
@@ -166,7 +164,7 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
     
     # Storing the final model
     model_filename = os.path.join(results_dir[0], f"net_last.pth")
-    torch.save(trainer.model.state_dict(), model_filename)
+    torch.save(trainer.best_model, model_filename)
     print(f"Model saved: {model_filename}")
     model_filename = os.path.join(results_dir[1], "output.json")
     with open(model_filename, 'w') as f:

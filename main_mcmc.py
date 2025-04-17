@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 # import wandb
 import yaml
 
-from models.dnn import Trainer, MLP_dropout
+from models.mcmc import BayesianNNTrainer
 from datasets.buildings_dataset import Buildings
 # from active_learning.active_learn import ActiveLearning
 
@@ -50,14 +50,13 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
     seed = int(config["seed"])
     set_seed(seed)
 
-    num_epochs = config["num_epochs"]
     batch_size = config["batch_size"]
-    learning_rate = config["learning_rate"]
-    w_decay = config["weight_decay"]
     hidden_size = config["hidden_size"]
+    num_samples = config["num_samples"]
+    parallel_chains = config["parallel_chains"]
+    warmup_steps = config["warmup_steps"]
     layers = config["layers"]
     num_forwards = config["num_forwards"]
-    dropout_rate = config["dropout"]
     number_active_points = config["active_points"]
     num_active_iter = config["active_iterations"]
     budget_total = config["budget_total"]
@@ -120,29 +119,37 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
         # Create DataLoaders
         train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 
-        # Instantiate the classifier
-        input_size = 384 # Only considering aerial images
-        net = MLP_dropout(input_size, hidden_size, layers, num_classes, dropout_rate)
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(net.parameters(), lr=learning_rate, weight_decay=w_decay)
-        trainer = Trainer(net, num_classes, train_loader, test_loader, criterion, optimizer, num_epochs, patience=400)
+        # Instantiate the Bayesian NN trainer
+        bnn_trainer = BayesianNNTrainer(
+            input_size=384,
+            hidden_size=hidden_size,
+            num_classes=num_classes,
+            device="cuda" if torch.cuda.is_available() else "cpu",
+            num_samples=int(num_samples/parallel_chains),
+            warmup_steps=warmup_steps,
+            num_chains=parallel_chains,
+        )
+        
+        # MCMC "training"
+        print("Running BayesianNNTrainer MCMC...")
+        bnn_trainer.train(train_loader)
 
-        trainer.train()
-        score_AL["accuracy_test"].append(trainer.score)
+        # Evaluate on test set
+        test_score = bnn_trainer.evaluate(test_loader, n_samples=num_samples)
+        print(f"Test accuracy: {test_score:.4f}")
+        score_AL["accuracy_test"].append(test_score)
 
         ## Loop
         idx_pool = pool_ds.indices
         idx_train = train_ds.indices
-
-        trainer.model.load_state_dict(trainer.best_model)
             
-        selected_idx_pool, cost = active_learn.get_points(trainer.model, num_forwards, buildings_dataset, idx_pool, idx_train)
+        selected_idx_pool, cost = active_learn.get_points(bnn_trainer, buildings_dataset, idx_pool, n_samples=num_samples)
         score_AL["cost"].append(cost)
         cost_total += cost
 
         if use_wandb and wandb_available:
             wandb.log({
-            "score": trainer.score,
+            "score": test_score,
             "cost_accum": cost,
             }, step=i)
         
@@ -158,7 +165,7 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
 
         if i % save_interval == 0:
             model_filename = os.path.join(results_dir[0], f"net_{i}.pth")
-            torch.save(trainer.model.state_dict(), model_filename)
+            torch.save(bnn_trainer.posterior_samples, model_filename)
             print(f"Model saved: {model_filename}")
             model_filename = os.path.join(results_dir[1], "output.json")
             with open(model_filename, 'w') as f:
@@ -166,7 +173,7 @@ def training_loop(config=None, use_wandb=False, custom_name=None):
     
     # Storing the final model
     model_filename = os.path.join(results_dir[0], f"net_last.pth")
-    torch.save(trainer.model.state_dict(), model_filename)
+    torch.save(bnn_trainer.posterior_samples, model_filename)
     print(f"Model saved: {model_filename}")
     model_filename = os.path.join(results_dir[1], "output.json")
     with open(model_filename, 'w') as f:
