@@ -11,7 +11,7 @@ class ActiveLearning:
         self.coordinates = coordinates
         self.cost_area = cost_area
 
-    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool, idx_train):
         pass
 
     def predict(self, model, inputs, forward_passes):
