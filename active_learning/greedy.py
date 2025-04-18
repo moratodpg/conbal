@@ -5,7 +5,8 @@ import torch.nn as nn
 import numpy as np
 
 from active_learning.active_learning import ActiveLearning
-    
+
+### MI (Dropout)
 class MIGreedy(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
@@ -196,6 +197,8 @@ class MIGreedyArea(ActiveLearning):
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
         return selected_idx_pool, cost_total
     
+### Badge
+    
 class Greedy_Badge(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
@@ -301,6 +304,124 @@ class Greedy_Badge(ActiveLearning):
 
         return grad_last_layer.detach()
     
+class Greedy_Badge_Area(ActiveLearning):
+    def __init__(self, num_active_points, budget_total, coordinates, cost_area):
+        super().__init__(num_active_points, budget_total, coordinates, cost_area)
+        
+    def get_points(self, net_current, _, buildings_dataset, idx_pool, idx_train):
+        cost_total = 0
+        cost_factor = 1
+
+        net_current.eval()
+        gradients_matrix = self.per_sample_grad_last_layer(net_current, buildings_dataset.input_tensor[idx_pool])
+        net_current.train()
+
+        N, D = gradients_matrix.shape
+
+        budget = self.budget_total 
+        area_cost = self.cost_area[idx_pool]
+        area_cost_mask = area_cost > budget
+
+        allowed = torch.where(~area_cost_mask)[0] 
+        if len(allowed) == 0:
+            selected_idx_pool = []
+            return selected_idx_pool, cost_total
+
+        # Step 1: choose the first center randomly
+        first_idx = allowed[ torch.randint(len(allowed), (1,)).item() ]
+
+        center_indices = [first_idx.item()]
+        centers = [gradients_matrix[first_idx].view(1, D)]
+
+        cost_total += area_cost[center_indices[-1]].item()
+        budget -= area_cost[center_indices[-1]].item()
+
+
+        for _ in range(self.num_active_points - 1):
+            
+            existing_centers = torch.cat(centers, dim=0)  # shape: [c, D], c < k
+            # compute L2 distance from each point to each existing center
+            # shape: [N, c]
+            dists = torch.cdist(gradients_matrix, existing_centers, p=2)
+            # for each point, find distance to its closest center
+            min_dist, _ = dists.min(dim=1)  # shape: [N]
+            # squared distances
+            min_dist_sq = min_dist**2
+            # pick a new center index with probability proportional to dist^2
+            probs = min_dist_sq / torch.sum(min_dist_sq)
+
+            # Masking out points beyond adaptive threshold
+            area_cost_mask = area_cost > budget
+
+            probs[area_cost_mask] = 0
+            probs[center_indices] = 0
+
+            if probs.sum() < 1e-8:
+                selected_idx_pool = [idx_pool[i] for i in center_indices]
+                return selected_idx_pool, cost_total
+
+            # Select the next batch active point
+            new_center_idx = torch.multinomial(probs, 1).item()
+            center_indices.append(new_center_idx)
+            centers.append(gradients_matrix[new_center_idx].view(1, D))
+
+            cost_total += area_cost[center_indices[-1]].item()
+            budget -= area_cost[center_indices[-1]].item()
+
+        # From the selected indices, get the indices from the pool
+        selected_idx_pool = [idx_pool[i] for i in center_indices]
+        return selected_idx_pool, cost_total
+    
+    def per_sample_grad_last_layer(self, model, X):
+        """
+        Computes per-sample gradient wrt. the LAST LINEAR layer for
+        a dropout MLP that ends with a linear(width -> output_dim).
+
+        Using 'predicted labels' (argmax) as the "true" label
+        (the 'pseudo-label' scenario).
+        """
+
+        # --- 1) Split the final layer from the rest of the MLP ---
+        final_linear = model.block[-1]       # e.g. nn.Linear(width, output_dim)
+        # all layers except the last
+        block_before_final = model.block[:-1]
+
+        # --- 2) Forward pass ---
+        # We get the hidden representation from everything except the final linear.
+        hidden = block_before_final(X)       # shape: [N, width]
+        logits = final_linear(hidden)        # shape: [N, output_dim]
+
+        # Predicted labels => make one-hot
+        predicted_labels = logits.argmax(dim=1)                # shape: [N]
+        y_onehot = F.one_hot(predicted_labels, logits.size(1)) # shape: [N, output_dim]
+        y_onehot = y_onehot.float()
+
+        # Softmax probabilities
+        probs = torch.softmax(logits, dim=1) # shape: [N, output_dim]
+        # Delta = (p_i - y_i)
+        delta = probs - y_onehot            # shape: [N, output_dim]
+
+        # --- 3) Compute final-layer gradients (vectorized) ---
+        # final_linear has: W shape = [output_dim, width], b shape = [output_dim]
+        # For each sample i:
+        #   grad_w[i] = outer(delta[i], hidden[i])  => shape [output_dim, width]
+        #   grad_b[i] = delta[i]                    => shape [output_dim]
+
+        # Vectorize the outer products
+        grad_w = delta.unsqueeze(2) * hidden.unsqueeze(1)   # shape: [N, output_dim, width]
+        grad_w_flat = grad_w.view(X.size(0), -1)            # shape: [N, output_dim*width]
+
+        grad_b = delta                                     # shape: [N, output_dim]
+
+        # Concatenate [grad_w, grad_b] along dim=1
+        grad_last_layer = torch.cat([grad_w_flat, grad_b], dim=1)
+        # shape => [N, (output_dim * width + output_dim)]
+
+        return grad_last_layer.detach()
+    
+
+### Coreset
+    
 class Greedy_Coreset(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
@@ -356,7 +477,9 @@ class Greedy_Coreset(ActiveLearning):
         # From the selected indices, get the indices from the pool
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
         return selected_idx_pool, cost_total
-    
+
+### MI (MCMC)
+
 class MI_MCMC_Greedy(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
@@ -414,6 +537,8 @@ class MI_MCMC_Greedy(ActiveLearning):
         # From the selected indices, get the indices from the pool
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
         return selected_idx_pool, cost_total
+
+### MI (Ensemble)
 
 class MI_ensemble_Greedy(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
