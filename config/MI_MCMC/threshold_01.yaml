@@ -1,0 +1,22 @@
+active_iterations: 800
+active_points: 5
+al_mode: MI_MCMC_Adapt_Threshold # class
+batch_size: 32
+budget_total: 0.1
+dataset: build_6k
+dropout: 0.1
+hidden_size: 64
+layers: 2
+learning_rate: 0.0001
+mode: adapt_threshold # module block
+num_epochs: 200
+num_samples: 100
+parallel_chains: 4
+num_forwards: 100
+save_interval: 50
+wandb_entity: "imp_marl"
+wandb_project: "tests_al_"
+wandb_mode: "online"
+warmup_steps: 50
+weight_decay: 0.0001
+seed: None

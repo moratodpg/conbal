@@ -10,7 +10,7 @@ class RandomBudget(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
-    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool, idx_train):
         cost_total = 0
         cost_factor = 1
         budget = self.budget_total 
@@ -39,7 +39,7 @@ class RandomBudgetReturn(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
-    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool, idx_train):
         cost_total = 0
         cost_factor = 1
         budget = self.budget_total 
@@ -78,7 +78,7 @@ class RandomAreas(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
         
-    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool):
+    def get_points(self, net_current, num_forwards, buildings_dataset, idx_pool, idx_train):
         cost_total = 0
         budget = self.budget_total 
         selected_ind = []

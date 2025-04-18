@@ -6,6 +6,7 @@ import numpy as np
 
 from active_learning.active_learning import ActiveLearning
 
+### MI (dropout) ###
 class MIAdaptThreshold(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
@@ -389,7 +390,7 @@ class Adapt_Threshold_Badge_Area(ActiveLearning):
         # Step 1: choose the first center randomly
         first_idx = allowed[ torch.randint(len(allowed), (1,)).item() ]
         # Step 2: compute the distance from the first center
-        center_indices = [first_idx]
+        center_indices = [first_idx.item()]
         centers = [gradients_matrix[first_idx].view(1, D)]
 
         cost_total += area_cost[center_indices[-1]].item()
@@ -622,8 +623,8 @@ class Adapt_Threshold_Coreset_Area(ActiveLearning):
             _, sel_idx = min_dist.topk(1)        
             selected_ind.append(sel_idx.item())
 
-            cost_total += area_cost[selected_ind[-1]].item()/1000
-            budget -= area_cost[selected_ind[-1]].item()/1000
+            cost_total += area_cost[selected_ind[-1]].item()
+            budget -= area_cost[selected_ind[-1]].item()
             budget_points -= 1
 
         # From the selected indices, get the indices from the pool
@@ -631,7 +632,7 @@ class Adapt_Threshold_Coreset_Area(ActiveLearning):
         return selected_idx_pool, cost_total
     
 
-### MCMC ###
+### MI (MCMC) ###
 class MI_MCMC_Adapt_Threshold(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
@@ -779,7 +780,7 @@ class MI_MCMC_Adapt_Threshold_Area(ActiveLearning):
         selected_idx_pool = [idx_pool[i] for i in selected_ind]
         return selected_idx_pool, cost_total
     
-### Ensemble ###
+### MI (Ensemble) ###
 class MI_ensemble_Adapt_Threshold(ActiveLearning):
     def __init__(self, num_active_points, budget_total, coordinates, cost_area):
         super().__init__(num_active_points, budget_total, coordinates, cost_area)
@@ -918,7 +919,7 @@ class MI_ensemble_Adapt_Threshold_Area(ActiveLearning):
             # Select the next batch active point
             _, mi_indices = joint_mutual_info.topk(1)
             selected_ind.append(mi_indices.item())
-            
+
             cost_total += area_cost[selected_ind[-1]].item()
             budget -= area_cost[selected_ind[-1]].item()
             budget_points -= 1
