@@ -1,12 +1,12 @@
-# ConBatch-BAL: Batch Bayesian Active Learning under Budget Constraints
+# ConBAL: Benchmarking Batch Active Learning under Budget Constraints
 
-This repository contains the code for running **active learning** experiments under **batch budget constraints**. 
+This repository contains the code for running **batch active learning** experiments under **budget constraints**. 
 
-In ConBatch-BAL, you can:
+In Con-BAL, you can:
 
 - Reproduce the results presented in the paper.
-- Test ConBatch-BAL strategies on a the available real-world building datasets or a dataset of your choice.
-- Develop a new active learning strategy and test it against ConBatch BAL strategies or the implemented random selection baseline.
+- Test heuristic strategies integrated with widely used acquisition functions on the available real-world building datasets or a dataset of your choice.
+- Develop a new active learning strategy and test it against the existing strategies or the implemented random selection baseline.
 
 ## Installation
 The code has been implemented and tested on Python 3.9. Please install the requirements file to include the required dependencies.
@@ -20,9 +20,7 @@ pip install -r requirements.txt
 1. Download the dataset(s) torch files and the stored results of the experiment(s) you would like to reproduce
 
 You can manually download the datasets and stored experiments via the following anonymous link: 
-
-[https://zenodo.org/records/13861426?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImMwN2UxNDI1LTBmODgtNGI3Mi1hODVlLTcyODU0ZjU3YTQzNyIsImRhdGEiOnt9LCJyYW5kb20iOiI2ZGY5YTYxMWZiY2JjZmQ5YWQwNDhiOTllNmMyNDNhYyJ9.WW9C9tF0HN2157PYh5w_dH4a3cElrhT9zhrBKdU4Gkz-JvtbXmrQWhmVibk8VBWC7muK3fTm13--gXAOqK2hKw](https://zenodo.org/records/13861426?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImMwN2UxNDI1LTBmODgtNGI3Mi1hODVlLTcyODU0ZjU3YTQzNyIsImRhdGEiOnt9LCJyYW5kb20iOiI2ZGY5YTYxMWZiY2JjZmQ5YWQwNDhiOTllNmMyNDNhYyJ9.WW9C9tF0HN2157PYh5w_dH4a3cElrhT9zhrBKdU4Gkz-JvtbXmrQWhmVibk8VBWC7muK3fTm13--gXAOqK2hKw)
-
+[https://www.kaggle.com/datasets/pablomoratodomnguez/conbal](https://www.kaggle.com/datasets/pablomoratodomnguez/conbal)
 
 2. Include the dataset(s) to the code
 
