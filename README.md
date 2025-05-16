@@ -22,6 +22,8 @@ pip install -r requirements.txt
 You can manually download the datasets and stored experiments via the following anonymous link: 
 [https://www.kaggle.com/datasets/pablomoratodomnguez/conbal](https://www.kaggle.com/datasets/pablomoratodomnguez/conbal)
 
+You can also download the files automatically by executing `retrieve_data_from_kaggle.sh`. This will collect all files in a folder `\data`.
+
 2. Include the dataset(s) to the code
 
 Include the dataset torch files contained in the folder `data/benchmark_torch_files` to the directory [datasets/](datasets/).
@@ -72,6 +74,7 @@ Parameters:
 ├── datasets/               # Dataset files
 ├── config/                 # Input configuration files
 ├── active_learning/        # Acquisition functions
+├── figures/                # Code for plotting the results
 ├── results/                # Output results and logs
 ├── compute_embeddings/     # *Additional* helper code to compute image embeddings
 ├── LICENSE                 # License
@@ -94,3 +97,14 @@ The json output file contains a dictionary categorized by the following keys and
 
 ## License
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+
+
+## Figures
+
+The code necessary to plot the results presented in the paper is provided in `/figures`. You can easily include your results and compare against existing experiments.
+
+<img src="figures/results_build6k_distance.png" alt="build6k_distance" width="300" />
+<img src="figures/results_build6k_area.png" alt="build6k_distance" width="300" />
+
+<img src="figures/results_nieman17k_distance.png" alt="build6k_distance" width="300" />
+<img src="figures/results_nieman17k_distance.png" alt="build6k_distance" width="300" />
