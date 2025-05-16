@@ -24,11 +24,11 @@ You can manually download the datasets and stored experiments via the following 
 
 2. Include the dataset(s) to the code
 
-Include the dataset torch files contained in the folder `benchmark_torch_files` to the directory [datasets/](datasets/).
+Include the dataset torch files contained in the folder `data/benchmark_torch_files` to the directory [datasets/](datasets/).
 
 3. Include the config file(s) corresponding to the experiment(s) you would like to reproduce to the code
 
-Include the input config files associated with the experiments you would like to reproduce. All results are included in the folder `benchmark_results`. Add the specific config file(s) to the directory [config/](config/). Feel free to modify the name of the config files to avoid duplicates.
+Include the input config files associated with the experiments you would like to reproduce. All results are included in the folder `data/benchmark_results`. Add the specific config file(s) to the directory [config/](config/). Feel free to modify the name of the config files to avoid duplicates.
 
 > The config file already contains the random seed set for the experiment.
 
@@ -52,6 +52,8 @@ You can run the code by executing:
 ```bash
 python main.py <config_file> <custom_name> --use_wandb
 ```
+
+If you run ensembles or MCMC simulations, modify the main file accordingly.
 
 Example:
 
@@ -77,9 +79,9 @@ Parameters:
 ```
 
 ## Results
-Results will be saved in the `results/` folder. Each subfolder here corresponds to an experiment set: dataset_configuration (e.g. build6k_distance => dataset "build6k", configuration "distance").
+Results will be saved in the `results/` folder. 
 
-Inside each experiment set, directories are named based on the strategy_budget_seed_date. For instance, greedy_01_1_2024_07_25_16_32_00 corresponds to greedy ConBatch-BAL under 100 m batch constraint, seed 1, and experiment date.
+Inside each experiment set, directories are named based on the dataset_configuration_strategy_acquisitionfunction_budget_seed_date. For instance, build6k_area_badge_greedy_101_1_2025_04_21_00_44_01 corresponds to the greedy heuristic integrated with badge under 101 cost units batch constraint on the build6k dataset and area cost configuration, seed 1, and experiment date.
 
 Within each specific experiment folder, a yaml config file is included with all parameters needed to run again the experiment and an json output file that contains the results. 
 
