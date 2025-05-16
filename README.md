@@ -2,11 +2,11 @@
 
 This repository contains the code for running **batch active learning** experiments under **budget constraints**. 
 
-In Con-BAL, you can:
+In ConBAL, you can:
 
 - Reproduce the results presented in the paper.
 - Test heuristic strategies integrated with widely used acquisition functions on the available real-world building datasets or a dataset of your choice.
-- Develop a new active learning strategy and test it against the existing strategies or the implemented random selection baseline.
+- Develop and test a new active learning strategy against the existing strategies or the implemented random selection baseline.
 
 ## Installation
 The code has been implemented and tested on Python 3.9. Please install the requirements file to include the required dependencies.
